@@ -11,6 +11,7 @@ export function rechnungsCsv({ zeilen, summeCent }: Zeilen): string {
   const kopf = [
     t.spaltePosition,
     t.spalteObjekt,
+    t.spalteZusatzauftrag,
     t.spalteTaetigkeit,
     t.spalteMonat,
     t.spalteStunden,
@@ -21,6 +22,7 @@ export function rechnungsCsv({ zeilen, summeCent }: Zeilen): string {
   const zeilenAlsText = zeilen.map((z) => [
     text(z.position),
     text(z.objekt),
+    text(z.zusatzauftrag),
     text(z.taetigkeit),
     text(z.monat),
     z.minuten === null ? "" : stundenAlsText(z.minuten),
@@ -28,7 +30,7 @@ export function rechnungsCsv({ zeilen, summeCent }: Zeilen): string {
     z.stundensatzCent === null ? "" : euroAlsEingabe(z.stundensatzCent),
     euroAlsEingabe(z.betragCent),
   ]);
-  const summe = [t.summe, "", "", "", "", "", "", euroAlsEingabe(summeCent)];
+  const summe = [t.summe, "", "", "", "", "", "", "", euroAlsEingabe(summeCent)];
   return "﻿" + [kopf, ...zeilenAlsText, summe].map((z) => z.join(";") + "\r\n").join("");
 }
 

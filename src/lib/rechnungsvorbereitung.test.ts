@@ -4,6 +4,8 @@ import {
   type Eingabe,
   type Objekt,
   type Zeiteintrag,
+  type Zusatzauftrag,
+  zusatzauftragsAbrechnung,
 } from "./rechnungsvorbereitung";
 
 // Ein Kunde mit einem Pauschal-Objekt und einem Stunden-Objekt sowie
@@ -566,4 +568,105 @@ test("Zeiteinträge mit unbekannter Tätigkeit werden weder berechnet noch als a
   expect(ergebnis.positionen).toEqual([]);
   expect(ergebnis.zeiteintragIds).toEqual([]);
   expect(ergebnis.stundennachweis).toEqual([]);
+});
+
+const sturmschaden: Zusatzauftrag = {
+  id: "sturmschaden",
+  objektId: "buero-haus",
+  abrechnungsart: "stunden",
+  festbetragCent: null,
+  erledigt: true,
+};
+
+test("Ein Zusatzauftrag nach Stunden wird einzeln mit all seiner Zeit abgerechnet, egal in welchem Monat", () => {
+  const ergebnis = zusatzauftragsAbrechnung({
+    rundungsregel: "15-minuten",
+    zusatzauftrag: sturmschaden,
+    taetigkeiten: eingabe().taetigkeiten,
+    zeiteintraege: [
+      eintrag("2026-07-30T08:00:00+02:00", "2026-07-30T09:07:41+02:00", {
+        id: "juli",
+        objektId: "buero-haus",
+        taetigkeitId: "rasen",
+        zusatzauftragId: "sturmschaden",
+      }),
+      eintrag("2026-08-03T08:00:00+02:00", "2026-08-03T08:20:12+02:00", {
+        id: "august",
+        objektId: "buero-haus",
+        taetigkeitId: "rasen",
+        zusatzauftragId: "sturmschaden",
+      }),
+      // Reguläre Zeit gehört nicht zur Einzelabrechnung
+      eintrag("2026-08-03T09:00:00+02:00", "2026-08-03T10:00:00+02:00", {
+        id: "regulaer",
+        objektId: "buero-haus",
+        taetigkeitId: "rasen",
+      }),
+    ],
+  });
+  // 30.07.: 68 Minuten → 75, 03.08.: 20 Minuten → 30; 1:45 Std. zu 40 €
+  expect(ergebnis.positionen).toEqual([
+    {
+      art: "zusatzauftrag-stunden",
+      zusatzauftragId: "sturmschaden",
+      objektId: "buero-haus",
+      taetigkeitId: "rasen",
+      minuten: 105,
+      stundensatzCent: 4000,
+      betragCent: 7000,
+    },
+  ]);
+  expect(ergebnis.summeCent).toBe(7000);
+  expect(ergebnis.zeiteintragIds).toEqual(["juli", "august"]);
+  expect(ergebnis.stundennachweis.map((t) => [t.datum, t.minuten])).toEqual([
+    ["2026-07-30", 75],
+    ["2026-08-03", 30],
+  ]);
+});
+
+test("Ein Zusatzauftrag mit Festbetrag wird einzeln mit seinem Betrag abgerechnet, auch ohne erfasste Zeit", () => {
+  const ergebnis = zusatzauftragsAbrechnung({
+    rundungsregel: "minutengenau",
+    zusatzauftrag: {
+      id: "grundreinigung",
+      objektId: "villa",
+      abrechnungsart: "festbetrag",
+      festbetragCent: 89000,
+      erledigt: true,
+    },
+    taetigkeiten: eingabe().taetigkeiten,
+    zeiteintraege: [],
+  });
+  expect(ergebnis.positionen).toEqual([
+    {
+      art: "zusatzauftrag-festbetrag",
+      zusatzauftragId: "grundreinigung",
+      objektId: "villa",
+      betragCent: 89000,
+    },
+  ]);
+  expect(ergebnis.summeCent).toBe(89000);
+  expect(ergebnis.zeiteintragIds).toEqual([]);
+  expect(ergebnis.stundennachweis).toEqual([]);
+});
+
+test("Ein noch offener Zusatzauftrag wird nicht einzeln abgerechnet", () => {
+  const ergebnis = zusatzauftragsAbrechnung({
+    rundungsregel: "15-minuten",
+    zusatzauftrag: { ...sturmschaden, erledigt: false },
+    taetigkeiten: eingabe().taetigkeiten,
+    zeiteintraege: [
+      eintrag("2026-07-30T08:00:00+02:00", "2026-07-30T09:00:00+02:00", {
+        objektId: "buero-haus",
+        taetigkeitId: "rasen",
+        zusatzauftragId: "sturmschaden",
+      }),
+    ],
+  });
+  expect(ergebnis).toEqual({
+    positionen: [],
+    summeCent: 0,
+    zeiteintragIds: [],
+    stundennachweis: [],
+  });
 });

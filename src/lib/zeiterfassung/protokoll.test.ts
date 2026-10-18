@@ -4,6 +4,8 @@ import { protokollAnzeigen, type ProtokollZeile } from "./protokoll";
 const HAUS_A = "4f1c2b8e-1d2a-4c3b-9e8f-0a1b2c3d4e5f";
 const HAUS_B = "5f1c2b8e-1d2a-4c3b-9e8f-0a1b2c3d4e5f";
 const REINIGUNG = "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d";
+const STURMSCHADEN = "7c6d5e4f-1d2a-4c3b-9e8f-0a1b2c3d4e5f";
+const KELLER = "8c6d5e4f-1d2a-4c3b-9e8f-0a1b2c3d4e5f";
 
 const NAMEN = {
   objekte: new Map([
@@ -11,6 +13,10 @@ const NAMEN = {
     [HAUS_B, "Haus B"],
   ]),
   taetigkeiten: new Map([[REINIGUNG, "Unterhaltsreinigung"]]),
+  zusatzauftraege: new Map([
+    [STURMSCHADEN, "Sturmschaden Dach"],
+    [KELLER, "Keller entrümpeln"],
+  ]),
 };
 
 // So schreibt die Datenbank einen Zeiteintrag ins Protokoll.
@@ -70,6 +76,8 @@ test("Das Anlegen zeigt alle Angaben, das Ändern nur, was sich geändert hat", 
         { feld: "Art", vorher: "–", nachher: "Tätigkeit" },
         { feld: "Objekt", vorher: "–", nachher: "Haus A" },
         { feld: "Tätigkeit", vorher: "–", nachher: "Unterhaltsreinigung" },
+        // Einträge aus der Zeit vor den Zusatzaufträgen haben das Feld nicht.
+        { feld: "Zusatzauftrag", vorher: "–", nachher: "–" },
         { feld: "Beginn", vorher: "–", nachher: "16.10.2026, 08:00" },
         { feld: "Ende", vorher: "–", nachher: "–" },
         { feld: "Nachtrag", vorher: "–", nachher: "nein" },
@@ -118,6 +126,45 @@ test("Eine Fahrt hat kein Objekt; Änderungen ohne Benutzer stammen vom System",
     { feld: "Art", vorher: "Tätigkeit", nachher: "Fahrt" },
     { feld: "Objekt", vorher: "Haus A", nachher: "–" },
     { feld: "Tätigkeit", vorher: "Unterhaltsreinigung", nachher: "–" },
+  ]);
+});
+
+test("Zuordnen, Ändern und Entfernen eines Zusatzauftrags stehen im Protokoll", () => {
+  const mitSturmschaden = { ...GESTOPPT, zusatzauftrag_id: STURMSCHADEN };
+  const mitKeller = { ...GESTOPPT, zusatzauftrag_id: KELLER };
+  const zeilen = protokollAnzeigen(
+    [
+      {
+        id: 12,
+        aktion: "geaendert",
+        geaendert_am: "2026-10-19T07:12:43+00:00",
+        geaendert_von_name: "Petra Büro",
+        vorher: { ...GESTOPPT, zusatzauftrag_id: null },
+        nachher: mitSturmschaden,
+      },
+      {
+        id: 13,
+        aktion: "geaendert",
+        geaendert_am: "2026-10-19T07:13:02+00:00",
+        geaendert_von_name: "Petra Büro",
+        vorher: mitSturmschaden,
+        nachher: mitKeller,
+      },
+      {
+        id: 14,
+        aktion: "geaendert",
+        geaendert_am: "2026-10-19T07:14:10+00:00",
+        geaendert_von_name: "Petra Büro",
+        vorher: mitKeller,
+        nachher: { ...GESTOPPT, zusatzauftrag_id: null },
+      },
+    ],
+    NAMEN,
+  );
+  expect(zeilen.map((z) => z.aenderungen)).toEqual([
+    [{ feld: "Zusatzauftrag", vorher: "–", nachher: "Sturmschaden Dach" }],
+    [{ feld: "Zusatzauftrag", vorher: "Sturmschaden Dach", nachher: "Keller entrümpeln" }],
+    [{ feld: "Zusatzauftrag", vorher: "Keller entrümpeln", nachher: "–" }],
   ]);
 });
 

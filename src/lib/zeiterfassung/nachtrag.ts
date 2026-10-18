@@ -2,6 +2,7 @@ import { berlinerZeitpunkt } from "@/lib/berliner-zeit";
 import { istId } from "@/lib/id";
 import { texte } from "@/texte";
 import type { ZeiteintragArt } from "./anzeige";
+import { zusatzauftragAusFormular } from "./eingabe";
 
 // Die Angaben eines Nachtrags, wie sie in die Tabelle zeiteintrag gehen.
 // Dass er als Nachtrag markiert wird, erledigt die Datenbank selbst.
@@ -9,6 +10,8 @@ export type NachtragDaten = {
   art: ZeiteintragArt;
   objekt_id: string | null;
   taetigkeit_id: string | null;
+  // Leer bei regulärer Arbeit und bei Fahrten.
+  zusatzauftrag_id: string | null;
   // Zeitpunkte als ISO-Text
   beginn: string;
   ende: string;
@@ -51,11 +54,15 @@ export function pruefeNachtragEingabe(
 
   let objekt_id: string | null = null;
   let taetigkeit_id: string | null = null;
+  let zusatzauftrag_id: string | null = null;
   if (art === "taetigkeit") {
     objekt_id = feld("objekt");
     taetigkeit_id = feld("taetigkeit");
     if (!istId(objekt_id)) return { ok: false, fehler: texte.erfassung.fehlerObjekt };
     if (!istId(taetigkeit_id)) return { ok: false, fehler: texte.erfassung.fehlerTaetigkeit };
+    const zusatzauftrag = zusatzauftragAusFormular(formData);
+    if (!zusatzauftrag.ok) return zusatzauftrag;
+    zusatzauftrag_id = zusatzauftrag.zusatzauftrag_id;
   } else if (art !== "fahrt") {
     return { ok: false, fehler: t.fehlerArt };
   }
@@ -77,6 +84,7 @@ export function pruefeNachtragEingabe(
       art,
       objekt_id,
       taetigkeit_id,
+      zusatzauftrag_id,
       beginn: new Date(beginn).toISOString(),
       ende: new Date(ende).toISOString(),
     },

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ObjektZurAuswahl } from "@/lib/zeiterfassung/verwaltung";
+import type { ZusatzauftragZurAuswahl } from "@/lib/zusatzauftraege/verwaltung";
 import { texte } from "@/texte";
 import styles from "./erfassung.module.css";
 
@@ -99,6 +100,44 @@ export function TaetigkeitAuswahl({
         {taetigkeiten.map((t) => (
           <option key={t.id} value={t.id}>
             {t.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+// Zusatzauftrag des gewählten Objekts wählen (Feld "zusatzauftrag"; leer
+// heißt: reguläre Arbeit). Erscheint nur, wenn das Objekt welche hat.
+export function ZusatzauftragAuswahl({
+  zusatzauftraege,
+  objektId,
+  zusatzauftragId,
+  waehle,
+}: {
+  // Offene Zusatzaufträge aller Objekte, beim Ändern auch der bisherige.
+  zusatzauftraege: ZusatzauftragZurAuswahl[];
+  objektId: string;
+  zusatzauftragId: string;
+  waehle: (id: string) => void;
+}) {
+  const t = texte.zusatzauftraege;
+  const zumObjekt = zusatzauftraege.filter((za) => za.objekt_id === objektId);
+  if (zumObjekt.length === 0) return null;
+
+  return (
+    <label>
+      {t.auswahl}
+      <select
+        name="zusatzauftrag"
+        value={zusatzauftragId}
+        onChange={(e) => waehle(e.target.value)}
+        className={styles.eingabe}
+      >
+        <option value="">{t.keiner}</option>
+        {zumObjekt.map((za) => (
+          <option key={za.id} value={za.id}>
+            {za.erledigt ? t.erledigtMarkierung(za.beschreibung) : za.beschreibung}
           </option>
         ))}
       </select>

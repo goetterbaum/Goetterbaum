@@ -7,8 +7,11 @@ import { createClient } from "@/lib/supabase/server";
 import { istUnvollstaendig, tagUndZeit, wasUndWo } from "@/lib/zeiterfassung/anzeige";
 import { zeitAlsText } from "@/lib/zeiterfassung/protokoll";
 import { ladeZeiteintragMitProtokoll } from "@/lib/zeiterfassung/verwaltung";
+import { ladeZuordenbareZusatzauftraege } from "@/lib/zusatzauftraege/verwaltung";
 import { texte } from "@/texte";
 import styles from "../../page.module.css";
+import { zuordnungAendern } from "../actions";
+import { ZuordnungFormular } from "../zuordnung-formular";
 
 export default function ZeiteintragProtokoll({ params }: PageProps<"/zeiteintraege/[id]">) {
   return (
@@ -25,12 +28,14 @@ export default function ZeiteintragProtokoll({ params }: PageProps<"/zeiteintrae
   );
 }
 
-// Der Zeiteintrag, ob und von wem er freigegeben ist (mit Rücknahme,
+// Der Zeiteintrag mit seinem Zusatzauftrag (änderbar, solange er nicht
+// abgerechnet ist), ob und von wem er freigegeben ist (mit Rücknahme,
 // solange er nicht abgerechnet ist), und darunter jede Änderung: wann,
 // wer, was vorher und was nachher.
 async function Protokoll({ id: idVersprechen }: { id: Promise<string> }) {
   const t = texte.zeiteintraege;
-  const geladen = await ladeZeiteintragMitProtokoll(await createClient(), await idVersprechen);
+  const supabase = await createClient();
+  const geladen = await ladeZeiteintragMitProtokoll(supabase, await idVersprechen);
 
   if (!geladen) {
     return (
@@ -61,6 +66,15 @@ async function Protokoll({ id: idVersprechen }: { id: Promise<string> }) {
         {eintrag.nachtrag && ` · ${texte.nachtrag.markierung}`}
       </p>
       <p>{texte.erfassung.angelegtVon(eintrag.angelegt_von_name ?? texte.protokoll.unbekannt)}</p>
+      {eintrag.objekt_id !== null && !abgerechnet && (
+        <ZuordnungFormular
+          // Neu aufbauen, wenn sich die Zuordnung geändert hat.
+          key={eintrag.zusatzauftrag_id ?? ""}
+          aktion={zuordnungAendern.bind(null, eintrag.id)}
+          zusatzauftraege={await ladeZuordenbareZusatzauftraege(supabase, eintrag.objekt_id)}
+          bisher={eintrag.zusatzauftrag_id}
+        />
+      )}
       {eintrag.freigegeben_am !== null && (
         <>
           <p>

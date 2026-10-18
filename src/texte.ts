@@ -1,6 +1,11 @@
 // Alle Texte der Oberfläche an einer Stelle, damit später weitere
 // Sprachen ohne Umbau nachgerüstet werden können.
-import type { Abrechnungsart, Abrechnungszeitraum, Rundungsregel } from "@/lib/abrechnung";
+import type {
+  Abrechnungsart,
+  Abrechnungszeitraum,
+  Rundungsregel,
+  ZusatzauftragAbrechnungsart,
+} from "@/lib/abrechnung";
 import type { Rolle } from "@/lib/rollen";
 import type { Sparte } from "@/lib/sparte";
 
@@ -172,6 +177,51 @@ export const texte = {
       "Bei Stundenabrechnung gibt es keine Pauschale. Bitte lass das Feld leer.",
     fehlerKundeArchiviert: "Der Kunde dieses Objekts ist archiviert. Aktiviere zuerst den Kunden.",
   },
+  zusatzauftraege: {
+    titel: "Zusatzaufträge",
+    laedt: "Lädt …",
+    hinweis:
+      "Arbeit mit eigener Abrechnungsart, z. B. ein Sturmschaden in einem Pauschal-Objekt. Mitarbeiter wählen beim Start und Nachtrag nur offene Zusatzaufträge.",
+    keine: "Für dieses Objekt gibt es noch keine Zusatzaufträge.",
+    spalteBeschreibung: "Beschreibung",
+    spalteAbrechnung: "Abrechnung",
+    spalteStatus: "Status",
+    status: { offen: "offen", erledigt: "erledigt", abgerechnet: "abgerechnet" },
+    festbetragAlsText: (betrag: string) => `Festbetrag ${betrag}`,
+    nachStunden: "Nach Stunden",
+    neuTitel: "Neuer Zusatzauftrag",
+    bearbeiten: "Bearbeiten",
+    beschreibung: "Beschreibung",
+    abrechnungsart: "Abrechnungsart",
+    festbetrag: "Festbetrag in Euro",
+    angelegt: "Zusatzauftrag angelegt.",
+    nichtGefunden: "Diesen Zusatzauftrag gibt es nicht.",
+    zumObjekt: "Zurück zum Objekt",
+    objektArchiviert: "Für ein archiviertes Objekt lassen sich keine Zusatzaufträge anlegen.",
+    alsErledigtMarkieren: "Als erledigt markieren",
+    wiederOeffnen: "Wieder öffnen",
+    erledigtHinweis:
+      "Erledigt: Mitarbeiter und Vorarbeiter können ihn nicht mehr auswählen. In der Rechnungsvorbereitung lässt er sich jetzt einzeln abrechnen.",
+    abgerechnetHinweis:
+      "Dieser Zusatzauftrag ist abgerechnet und kann nicht mehr geändert werden. Ist etwas falsch, muss das Büro zuerst die Abrechnung in der Rechnungsvorbereitung zurücknehmen.",
+    fehlerBeschreibung: "Bitte beschreibe den Zusatzauftrag.",
+    fehlerAbrechnungsart: "Bitte wähle, wie der Zusatzauftrag abgerechnet wird.",
+    fehlerFestbetragFehlt: "Bitte gib den Festbetrag ein.",
+    fehlerFestbetragUngueltig: "Der Festbetrag ist kein gültiger Betrag. Beispiel: 1.250,00",
+    fehlerFestbetragBeiStunden: "Nach Stunden gibt es keinen Festbetrag. Bitte lass das Feld leer.",
+    fehlerGesperrt:
+      "Das ging nicht: Der Zusatzauftrag ist inzwischen abgerechnet, oder für ihn ist schon Zeit abgerechnet und die Abrechnungsart lässt sich nicht mehr ändern.",
+    auswahl: "Zusatzauftrag",
+    keiner: "Kein Zusatzauftrag",
+    erledigtMarkierung: (beschreibung: string) => `${beschreibung} (erledigt)`,
+    imEintrag: (beschreibung: string) => `Zusatzauftrag: ${beschreibung}`,
+    fehlerNichtZurAuswahl:
+      "Dieser Zusatzauftrag steht nicht mehr zur Auswahl oder gehört nicht zum gewählten Objekt. Bitte lade die Seite neu.",
+    zuordnungTitel: "Zusatzauftrag zuordnen",
+    zuordnungHinweis:
+      "Ändern oder entfernen, wenn der Mitarbeiter falsch zugeordnet hat. Zur Wahl stehen alle noch nicht abgerechneten Zusatzaufträge dieses Objekts. Die Änderung steht im Protokoll.",
+    zuordnungGespeichert: "Zuordnung gespeichert.",
+  },
   taetigkeiten: {
     titel: "Tätigkeiten",
     laedt: "Lädt …",
@@ -245,7 +295,7 @@ export const texte = {
     fehlerLaeuftNichtsOderUnvollstaendig:
       "Es läuft kein Zeiteintrag mehr, oder er läuft schon so lange, dass du das richtige Ende nachtragen musst.",
     fehlerNichtZurAuswahl:
-      "Dieses Objekt oder diese Tätigkeit steht nicht mehr zur Auswahl. Bitte lade die Seite neu.",
+      "Dieses Objekt, diese Tätigkeit oder dieser Zusatzauftrag steht nicht mehr zur Auswahl. Bitte lade die Seite neu.",
     fehlerAbgemeldet: "Du bist nicht mehr angemeldet. Bitte melde dich neu an.",
     fehlerStart:
       "Der Start wurde nicht gespeichert. Bitte versuche es noch einmal oder trage die Zeit später als Nachtrag ein.",
@@ -390,6 +440,7 @@ export const texte = {
     art: "Art",
     objekt: "Objekt",
     taetigkeit: "Tätigkeit",
+    zusatzauftrag: "Zusatzauftrag",
     beginn: "Beginn",
     ende: "Ende",
     nachtrag: "Nachtrag",
@@ -435,8 +486,28 @@ export const texte = {
         ? "Achtung: Im Zeitraum liegt 1 Zeiteintrag dieses Kunden, der noch nicht freigegeben ist. Er fehlt in der Rechnungsvorbereitung."
         : `Achtung: Im Zeitraum liegen ${anzahl} Zeiteinträge dieses Kunden, die noch nicht freigegeben sind. Sie fehlen in der Rechnungsvorbereitung.`,
     zurFreigabe: "Zur Freigabe",
+    warnungZusatzauftragWartet: (beschreibung: string) =>
+      `Achtung: Der erledigte Zusatzauftrag „${beschreibung}“ hat noch nicht freigegebene Zeiteinträge. Er fehlt, bis alle freigegeben sind.`,
+    einzelnTitel: "Erledigte Zusatzaufträge einzeln abrechnen",
+    einzelnHinweis:
+      "Ein erledigter Zusatzauftrag lässt sich sofort abrechnen, ohne das Ende des Abrechnungszeitraums abzuwarten. Die Abrechnung umfasst alle seine noch offenen Zeiteinträge, egal aus welchem Monat. Danach erscheint er nicht erneut.",
+    keineEinzeln: "Für diesen Kunden wartet kein erledigter Zusatzauftrag auf seine Abrechnung.",
+    einzelnUeberschrift: (beschreibung: string, objekt: string) => `${beschreibung} (${objekt})`,
+    einzelnWartet: (anzahl: number) =>
+      anzahl === 1
+        ? "1 Zeiteintrag dieses Zusatzauftrags ist noch nicht freigegeben. Abrechnen lässt er sich erst danach."
+        : `${anzahl} Zeiteinträge dieses Zusatzauftrags sind noch nicht freigegeben. Abrechnen lässt er sich erst danach.`,
+    einzelnAbrechnen: "Einzeln abrechnen",
+    einzelnLaeuft: "Wird abgerechnet …",
+    einzelnAbgerechnet: "Zusatzauftrag abgerechnet.",
+    fehlerEinzelnNichtGefunden:
+      "Diesen Zusatzauftrag gibt es nicht, oder er ist nicht (mehr) einzeln abrechenbar.",
+    csvDateinameZusatzauftrag: (kunde: string, beschreibung: string) =>
+      `Rechnungsvorbereitung ${kunde} ${beschreibung}.csv`,
+    zusatzauftragAlsZeitraum: (beschreibung: string) => `Zusatzauftrag: ${beschreibung}`,
     spaltePosition: "Position",
     spalteObjekt: "Objekt",
+    spalteZusatzauftrag: "Zusatzauftrag",
     spalteTaetigkeit: "Tätigkeit",
     spalteMonat: "Monat",
     spalteStunden: "Stunden",
@@ -513,6 +584,10 @@ export const texte = {
     pauschale: "Pauschale",
     stunden: "Stundenabrechnung",
   } satisfies Record<Abrechnungsart, string>,
+  zusatzauftragAbrechnungsarten: {
+    stunden: "Nach Stunden",
+    festbetrag: "Festbetrag",
+  } satisfies Record<ZusatzauftragAbrechnungsart, string>,
   adresse: {
     strasse: "Straße und Hausnummer",
     adresszusatz: "Adresszusatz (optional)",

@@ -2,6 +2,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { istId } from "@/lib/id";
 import type { Sparte } from "@/lib/sparte";
 import {
+  ladeZusatzauftraegeZurAuswahl,
+  type ZusatzauftragZurAuswahl,
+} from "@/lib/zusatzauftraege/verwaltung";
+import {
   angezeigtAb,
   istUnvollstaendig,
   type MeinZeiteintrag,
@@ -23,18 +27,25 @@ export type ObjektZurAuswahl = {
 
 export type TaetigkeitZurAuswahl = { id: string; name: string; sparte: Sparte };
 
-// Die aktiven Objekte und Tätigkeiten der eigenen Firma.
-export async function ladeAuswahl(supabase: SupabaseClient): Promise<{
+// Die aktiven Objekte und Tätigkeiten der eigenen Firma und die offenen
+// Zusatzaufträge. zusatzauftrag: der bisherige eines Eintrags, der geändert
+// wird; er steht auch erledigt zur Wahl.
+export async function ladeAuswahl(
+  supabase: SupabaseClient,
+  zusatzauftrag: string | null = null,
+): Promise<{
   objekte: ObjektZurAuswahl[];
   taetigkeiten: TaetigkeitZurAuswahl[];
+  zusatzauftraege: ZusatzauftragZurAuswahl[];
 }> {
-  const [objekte, taetigkeiten] = await Promise.all([
+  const [objekte, taetigkeiten, zusatzauftraege] = await Promise.all([
     supabase.rpc("objekte_zur_auswahl"),
     supabase.rpc("taetigkeiten_zur_auswahl"),
+    ladeZusatzauftraegeZurAuswahl(supabase, zusatzauftrag),
   ]);
   if (objekte.error) throw objekte.error;
   if (taetigkeiten.error) throw taetigkeiten.error;
-  return { objekte: objekte.data, taetigkeiten: taetigkeiten.data };
+  return { objekte: objekte.data, taetigkeiten: taetigkeiten.data, zusatzauftraege };
 }
 
 // Die Zeiteinträge eines Mitarbeiters in den angezeigten Tagen und immer
@@ -100,6 +111,7 @@ export type ZeiteintragZumAendern = {
   art: ZeiteintragArt;
   objekt_id: string | null;
   taetigkeit_id: string | null;
+  zusatzauftrag_id: string | null;
   beginn: string;
   ende: string | null;
   unvollstaendig: boolean;
@@ -115,7 +127,7 @@ export async function ladeZeiteintragZumAendern(
   const { data, error } = await supabase
     .from("zeiteintrag")
     .select(
-      "id, mitarbeiter_id, art, objekt_id, taetigkeit_id, beginn, ende, freigegeben_am, abgerechnet_in",
+      "id, mitarbeiter_id, art, objekt_id, taetigkeit_id, zusatzauftrag_id, beginn, ende, freigegeben_am, abgerechnet_in",
     )
     .eq("id", id)
     .maybeSingle<
@@ -207,7 +219,7 @@ export async function ladeZeiteintragMitProtokoll(
   if (!eintrag.data) return null;
 
   const zeilen: ProtokollZeile[] = protokoll.data;
-  const ids = (spalte: "objekt_id" | "taetigkeit_id") => [
+  const ids = (spalte: "objekt_id" | "taetigkeit_id" | "zusatzauftrag_id") => [
     ...new Set(
       zeilen
         .flatMap((z) => [z.vorher?.[spalte], z.nachher[spalte]])
@@ -215,12 +227,14 @@ export async function ladeZeiteintragMitProtokoll(
     ),
   ];
   // Auch archivierte, damit alte Stände lesbar bleiben.
-  const [objekte, taetigkeiten] = await Promise.all([
+  const [objekte, taetigkeiten, zusatzauftraege] = await Promise.all([
     supabase.from("objekt").select("id, bezeichnung").in("id", ids("objekt_id")),
     supabase.from("taetigkeit").select("id, name").in("id", ids("taetigkeit_id")),
+    supabase.from("zusatzauftrag").select("id, beschreibung").in("id", ids("zusatzauftrag_id")),
   ]);
   if (objekte.error) throw objekte.error;
   if (taetigkeiten.error) throw taetigkeiten.error;
+  if (zusatzauftraege.error) throw zusatzauftraege.error;
 
   return {
     eintrag: eintrag.data,
@@ -229,6 +243,7 @@ export async function ladeZeiteintragMitProtokoll(
     protokoll: protokollAnzeigen(zeilen, {
       objekte: new Map(objekte.data.map((o) => [o.id, o.bezeichnung])),
       taetigkeiten: new Map(taetigkeiten.data.map((t) => [t.id, t.name])),
+      zusatzauftraege: new Map(zusatzauftraege.data.map((za) => [za.id, za.beschreibung])),
     }),
   };
 }

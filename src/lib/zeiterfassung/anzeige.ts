@@ -29,6 +29,9 @@ export type MeinZeiteintrag = {
   // oder das Büro.
   angelegt_von: string;
   angelegt_von_name: string | null;
+  // Der zugeordnete Zusatzauftrag; leer bei regulärer Arbeit.
+  zusatzauftrag_id: string | null;
+  zusatzauftrag_beschreibung: string | null;
 };
 
 export type AngezeigterEintrag = MeinZeiteintrag & {
@@ -127,12 +130,16 @@ export function tagUndZeit(beginn: string, ende: string | null, laeuft: string):
   return `${tagesTitel.format(von)}, ${uhrzeit.format(von)}–${bis}`;
 }
 
-// Was und wo in einer Zeile: die Fahrt oder Objekt und Tätigkeit.
+// Was und wo in einer Zeile: die Fahrt oder Objekt und Tätigkeit, dazu
+// gegebenenfalls der Zusatzauftrag.
 export function wasUndWo(
-  eintrag: Pick<MeinZeiteintrag, "art" | "objekt_bezeichnung" | "taetigkeit_name">,
+  eintrag: Pick<MeinZeiteintrag, "art" | "objekt_bezeichnung" | "taetigkeit_name"> &
+    Partial<Pick<MeinZeiteintrag, "zusatzauftrag_beschreibung">>,
 ): string {
   if (eintrag.art === "fahrt") return texte.erfassung.fahrt;
-  return `${eintrag.objekt_bezeichnung} · ${eintrag.taetigkeit_name}`;
+  const ort = `${eintrag.objekt_bezeichnung} · ${eintrag.taetigkeit_name}`;
+  if (!eintrag.zusatzauftrag_beschreibung) return ort;
+  return `${ort} · ${texte.zusatzauftraege.imEintrag(eintrag.zusatzauftrag_beschreibung)}`;
 }
 
 // Wer den Eintrag für den Mitarbeiter angelegt hat, oder null, wenn er es

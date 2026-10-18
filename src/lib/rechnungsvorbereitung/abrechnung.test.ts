@@ -5,6 +5,8 @@ import { abrechnungsStand, abrechnungsUmfang } from "./abrechnung";
 const HAUS_A = "4f1c2b8e-1d2a-4c3b-9e8f-0a1b2c3d4e5f";
 const HAUS_B = "5f1c2b8e-1d2a-4c3b-9e8f-0a1b2c3d4e5f";
 const REINIGUNG = "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d";
+const STURMSCHADEN = "7c6d5e4f-1d2a-4c3b-9e8f-0a1b2c3d4e5f";
+const GRUNDREINIGUNG = "8c6d5e4f-1d2a-4c3b-9e8f-0a1b2c3d4e5f";
 const EINTRAG_1 = "1b2c3d4e-0000-4000-8000-000000000001";
 const EINTRAG_2 = "1b2c3d4e-0000-4000-8000-000000000002";
 
@@ -36,8 +38,39 @@ test("Eine Abrechnung umfasst die Zeiteinträge, die Pauschal-Monate und die Sum
       { objekt_id: HAUS_A, monat: "2026-02-01" },
       { objekt_id: HAUS_A, monat: "2026-03-01" },
     ],
+    // Ohne Zusatzauftrag mit Festbetrag schließt sie keinen ab.
+    zusatzauftragIds: [],
     summeCent: 106750,
     positionen: ERGEBNIS.positionen,
+  });
+});
+
+test("Eine Abrechnung schließt die Zusatzaufträge mit Festbetrag ab, nicht die nach Stunden", () => {
+  const MIT_ZUSATZAUFTRAEGEN: Rechnungsvorbereitung = {
+    ...ERGEBNIS,
+    positionen: [
+      {
+        art: "zusatzauftrag-stunden",
+        zusatzauftragId: STURMSCHADEN,
+        objektId: HAUS_A,
+        taetigkeitId: REINIGUNG,
+        minuten: 60,
+        stundensatzCent: 3000,
+        betragCent: 3000,
+      },
+      {
+        art: "zusatzauftrag-festbetrag",
+        zusatzauftragId: GRUNDREINIGUNG,
+        objektId: HAUS_B,
+        betragCent: 89000,
+      },
+    ],
+    summeCent: 92000,
+  };
+  expect(abrechnungsUmfang(MIT_ZUSATZAUFTRAEGEN)).toMatchObject({
+    pauschalMonate: [],
+    zusatzauftragIds: [GRUNDREINIGUNG],
+    summeCent: 92000,
   });
 });
 

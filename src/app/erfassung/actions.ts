@@ -14,7 +14,8 @@ import { texte } from "@/texte";
 
 // Fehlercodes der Datenbank (siehe Migration zum Zeiteintrag): Es läuft
 // schon einer (eindeutig je Mitarbeiter), bzw. Objekt oder Tätigkeit sind
-// archiviert (Prüfregel) oder gehören nicht zur Firma (Fremdschlüssel).
+// archiviert oder der Zusatzauftrag erledigt (Prüfregel), oder sie gehören
+// nicht zur Firma bzw. der Zusatzauftrag nicht zum Objekt (Fremdschlüssel).
 const LAEUFT_SCHON = "23505";
 const PRUEFREGEL_VERLETZT = "23514";
 const FREMDSCHLUESSEL_VERLETZT = "23503";

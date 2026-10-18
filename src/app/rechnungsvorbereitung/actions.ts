@@ -4,7 +4,10 @@ import { refresh } from "next/cache";
 import { alsBuero } from "@/lib/als-buero";
 import { istId } from "@/lib/id";
 import { abrechnungsStand, abrechnungsUmfang } from "@/lib/rechnungsvorbereitung/abrechnung";
-import { ladeRechnungsvorbereitungAusAdresse } from "@/lib/rechnungsvorbereitung/verwaltung";
+import {
+  ladeEinzelabrechnung,
+  ladeRechnungsvorbereitungAusAdresse,
+} from "@/lib/rechnungsvorbereitung/verwaltung";
 import { ersterTag } from "@/lib/rechnungsvorbereitung/zeitraum";
 import { FEHLER, OK, type Rueckmeldung } from "@/lib/rueckmeldung";
 import { texte } from "@/texte";
@@ -40,6 +43,7 @@ export async function alsAbgerechnetMarkieren(
     monate: umfang.pauschalMonate,
     aufstellung: umfang.positionen,
     summe: umfang.summeCent,
+    zusatzauftraege: umfang.zusatzauftragIds,
   });
   refresh();
   if (error) {
@@ -47,6 +51,41 @@ export async function alsAbgerechnetMarkieren(
     return FEHLER(t.fehlerMarkieren);
   }
   return OK(t.markiert);
+}
+
+// Rechnet einen erledigten Zusatzauftrag einzeln ab, mit all seinen noch
+// offenen Zeiteinträgen. Wie beim Zeitraum wird neu berechnet und nur
+// abgerechnet, was das Büro gesehen hat (stand). Dass er erledigt ist und
+// alle seine Zeiteinträge freigegeben sind, prüft zusätzlich die Datenbank.
+export async function zusatzauftragAbrechnen(
+  zusatzauftragId: string,
+  stand: string,
+): Promise<Rueckmeldung> {
+  const t = texte.rechnungsvorbereitung;
+  const { supabase, ich } = await alsBuero();
+  const einzel = await ladeEinzelabrechnung(supabase, ich.firma_id, zusatzauftragId);
+  if (!einzel) {
+    refresh();
+    return FEHLER(t.fehlerEinzelnNichtGefunden);
+  }
+  if (abrechnungsStand(einzel.ergebnis) !== stand) {
+    refresh();
+    return FEHLER(t.fehlerVeraendert);
+  }
+  if (einzel.nichtFreigegeben > 0) return FEHLER(t.einzelnWartet(einzel.nichtFreigegeben));
+
+  const { error } = await supabase.rpc("zusatzauftrag_abrechnen", {
+    welcher: einzel.zusatzauftrag.id,
+    eintraege: einzel.ergebnis.zeiteintragIds,
+    aufstellung: einzel.ergebnis.positionen,
+    summe: einzel.ergebnis.summeCent,
+  });
+  refresh();
+  if (error) {
+    console.error("Zusatzauftrag abrechnen fehlgeschlagen", error);
+    return FEHLER(t.fehlerMarkieren);
+  }
+  return OK(t.einzelnAbgerechnet);
 }
 
 // Nimmt eine Abrechnung zurück. Ihre Zeiteinträge und Pauschal-Monate sind

@@ -5,10 +5,15 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Fehlermeldung, useErfassungsAktion } from "@/app/erfassung/erfassungs-aktion";
 import styles from "@/app/erfassung/erfassung.module.css";
-import { ObjektAuswahl, TaetigkeitAuswahl } from "@/app/erfassung/objekt-auswahl";
+import {
+  ObjektAuswahl,
+  TaetigkeitAuswahl,
+  ZusatzauftragAuswahl,
+} from "@/app/erfassung/objekt-auswahl";
 import { START, type Rueckmeldung } from "@/lib/rueckmeldung";
 import { artAlsText, type ZeiteintragArt } from "@/lib/zeiterfassung/anzeige";
 import type { ObjektZurAuswahl, TaetigkeitZurAuswahl } from "@/lib/zeiterfassung/verwaltung";
+import type { ZusatzauftragZurAuswahl } from "@/lib/zusatzauftraege/verwaltung";
 import { texte } from "@/texte";
 
 // Was im Formular schon steht: beim Ändern der bisherige Eintrag, beim
@@ -17,6 +22,7 @@ export type NachtragVorgabe = {
   art: ZeiteintragArt;
   objekt_id: string;
   taetigkeit_id: string;
+  zusatzauftrag_id: string;
   datum: string;
   von: string;
   bis: string;
@@ -28,13 +34,14 @@ const MELDUNGEN = {
 };
 
 // Nachtragen oder Ändern eines beendeten Zeiteintrags: Tätigkeit in einem
-// Objekt oder Fahrt, Datum, von–bis. Nach dem Speichern geht es zurück zur
+// Objekt (gegebenenfalls für einen Zusatzauftrag) oder Fahrt, Datum, von–bis. Nach dem Speichern geht es zurück zur
 // Erfassung, aus der man kam (zurueck): der eigenen oder der eines anderen.
 export function NachtragFormular({
   aktion,
   zurueck,
   objekte,
   taetigkeiten,
+  zusatzauftraege,
   vorgabe,
 }: {
   aktion: (vorher: Rueckmeldung, formData: FormData) => Promise<Rueckmeldung>;
@@ -42,6 +49,8 @@ export function NachtragFormular({
   // Nur aktive Objekte und Tätigkeiten.
   objekte: ObjektZurAuswahl[];
   taetigkeiten: TaetigkeitZurAuswahl[];
+  // Offene Zusatzaufträge, beim Ändern auch der bisherige.
+  zusatzauftraege: ZusatzauftragZurAuswahl[];
   vorgabe: NachtragVorgabe;
 }) {
   const t = texte.nachtrag;
@@ -49,6 +58,12 @@ export function NachtragFormular({
   const [art, setArt] = useState(vorgabe.art);
   const [objektId, setObjektId] = useState(vorgabe.objekt_id);
   const [taetigkeitId, setTaetigkeitId] = useState(vorgabe.taetigkeit_id);
+  const [zusatzauftragId, setZusatzauftragId] = useState(vorgabe.zusatzauftrag_id);
+  // Ein Zusatzauftrag gehört immer zum gewählten Objekt.
+  const waehleObjekt = (id: string) => {
+    setObjektId(id);
+    setZusatzauftragId("");
+  };
   // Auch Datum und Uhrzeiten hält das Formular selbst, damit sie nach einer
   // Fehlermeldung stehen bleiben.
   const [zeit, setZeit] = useState({
@@ -67,6 +82,7 @@ export function NachtragFormular({
       setArt(vorgabe.art);
       setObjektId(vorgabe.objekt_id);
       setTaetigkeitId(vorgabe.taetigkeit_id);
+      setZusatzauftragId(vorgabe.zusatzauftrag_id);
       setZeit({ datum: vorgabe.datum, von: vorgabe.von, bis: vorgabe.bis });
       router.push(zurueck);
       return START;
@@ -93,11 +109,17 @@ export function NachtragFormular({
       </fieldset>
       {art === "taetigkeit" && (
         <>
-          <ObjektAuswahl objekte={objekte} objektId={objektId} waehle={setObjektId} />
+          <ObjektAuswahl objekte={objekte} objektId={objektId} waehle={waehleObjekt} />
           <TaetigkeitAuswahl
             taetigkeiten={taetigkeiten}
             taetigkeitId={taetigkeitId}
             waehle={setTaetigkeitId}
+          />
+          <ZusatzauftragAuswahl
+            zusatzauftraege={zusatzauftraege}
+            objektId={objektId}
+            zusatzauftragId={zusatzauftragId}
+            waehle={setZusatzauftragId}
           />
         </>
       )}

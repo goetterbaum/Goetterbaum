@@ -11,6 +11,10 @@ const namen = {
     ["t-glas", "Glasreinigung"],
     ["t-unterhalt", "Unterhaltsreinigung"],
   ]),
+  zusatzauftraege: new Map([
+    ["za-sturm", "Sturmschaden Dach"],
+    ["za-grund", "Grundreinigung nach Umbau"],
+  ]),
 };
 
 test("Pauschalen je Monat und Stunden je Objekt und Tätigkeit werden mit Namen zu Zeilen", () => {
@@ -58,6 +62,7 @@ test("Pauschalen je Monat und Stunden je Objekt und Tätigkeit werden mit Namen 
       {
         position: "Pauschale",
         objekt: "Wohnanlage Ringstraße",
+        zusatzauftrag: "",
         taetigkeit: "",
         monat: "März 2026",
         minuten: null,
@@ -67,6 +72,7 @@ test("Pauschalen je Monat und Stunden je Objekt und Tätigkeit werden mit Namen 
       {
         position: "Stunden",
         objekt: "Büro Domplatz",
+        zusatzauftrag: "",
         taetigkeit: "Unterhaltsreinigung",
         monat: "",
         minuten: 75,
@@ -76,6 +82,7 @@ test("Pauschalen je Monat und Stunden je Objekt und Tätigkeit werden mit Namen 
       {
         position: "Stunden",
         objekt: "Büro Domplatz",
+        zusatzauftrag: "",
         taetigkeit: "Glasreinigung",
         monat: "",
         minuten: 30,
@@ -85,6 +92,56 @@ test("Pauschalen je Monat und Stunden je Objekt und Tätigkeit werden mit Namen 
     ],
     summeCent: 55675,
   });
+});
+
+test("Zusatzaufträge werden mit ihrer Beschreibung zu eigenen Zeilen", () => {
+  const { zeilen } = rechnungsZeilen(
+    {
+      positionen: [
+        {
+          art: "zusatzauftrag-stunden",
+          zusatzauftragId: "za-sturm",
+          objektId: "o-pauschal",
+          taetigkeitId: "t-unterhalt",
+          minuten: 90,
+          stundensatzCent: 3000,
+          betragCent: 4500,
+        },
+        {
+          art: "zusatzauftrag-festbetrag",
+          zusatzauftragId: "za-grund",
+          objektId: "o-stunden",
+          betragCent: 89000,
+        },
+      ],
+      summeCent: 93500,
+      zeiteintragIds: [],
+      stundennachweis: [],
+    },
+    namen,
+  );
+  expect(zeilen).toEqual([
+    {
+      position: "Zusatzauftrag nach Stunden",
+      objekt: "Wohnanlage Ringstraße",
+      zusatzauftrag: "Sturmschaden Dach",
+      taetigkeit: "Unterhaltsreinigung",
+      monat: "",
+      minuten: 90,
+      stundensatzCent: 3000,
+      betragCent: 4500,
+    },
+    {
+      position: "Zusatzauftrag mit Festbetrag",
+      objekt: "Büro Domplatz",
+      zusatzauftrag: "Grundreinigung nach Umbau",
+      taetigkeit: "",
+      monat: "",
+      minuten: null,
+      stundensatzCent: null,
+      betragCent: 89000,
+    },
+  ]);
 });
 
 test("Ohne bekannten Namen steht „unbekannt“ statt einer leeren Zelle", () => {

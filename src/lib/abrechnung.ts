@@ -15,6 +15,15 @@ export function istAbrechnungsart(wert: string): wert is Abrechnungsart {
   return (ABRECHNUNGSARTEN as readonly string[]).includes(wert);
 }
 
+// Abrechnungsart eines Zusatzauftrags, wie in der Datenbank (Typ
+// public.zusatzauftrag_abrechnungsart).
+export const ZUSATZAUFTRAG_ABRECHNUNGSARTEN = ["stunden", "festbetrag"] as const;
+export type ZusatzauftragAbrechnungsart = (typeof ZUSATZAUFTRAG_ABRECHNUNGSARTEN)[number];
+
+export function istZusatzauftragAbrechnungsart(wert: string): wert is ZusatzauftragAbrechnungsart {
+  return (ZUSATZAUFTRAG_ABRECHNUNGSARTEN as readonly string[]).includes(wert);
+}
+
 // Rundungsregel der Firma (Standard) und eines Kunden (abweichend), wie in
 // der Datenbank (Typ public.rundungsregel).
 export const RUNDUNGSREGELN = ["minutengenau", "15-minuten"] as const;

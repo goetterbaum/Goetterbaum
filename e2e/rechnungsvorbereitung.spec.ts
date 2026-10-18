@@ -128,10 +128,10 @@ test("Das Büro sieht Pauschale und gerundete Stunden eines Kunden, wird vor Feh
   const inhalt = await readFile((await datei.path())!);
   expect(inhalt.subarray(0, 3)).toEqual(Buffer.from([0xef, 0xbb, 0xbf]));
   expect(inhalt.toString("utf8").slice(1)).toBe(
-    "Position;Objekt;Tätigkeit;Monat;Stunden;Minuten;Stundensatz;Betrag\r\n" +
-      `Pauschale;${kunde.pauschalObjekt};;März 2026;;;;500,00\r\n` +
-      `Stunden;${kunde.stundenObjekt};${kunde.taetigkeit};;2:15;135;30,00;67,50\r\n` +
-      "Summe;;;;;;;567,50\r\n",
+    "Position;Objekt;Zusatzauftrag;Tätigkeit;Monat;Stunden;Minuten;Stundensatz;Betrag\r\n" +
+      `Pauschale;${kunde.pauschalObjekt};;;März 2026;;;;500,00\r\n` +
+      `Stunden;${kunde.stundenObjekt};;${kunde.taetigkeit};;2:15;135;30,00;67,50\r\n` +
+      "Summe;;;;;;;;567,50\r\n",
   );
 
   // Im April zählt nur, was im April beginnt: am 02.04. 63:24 Minuten →

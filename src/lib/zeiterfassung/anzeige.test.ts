@@ -5,6 +5,7 @@ import {
   istUnvollstaendig,
   laeuftSeit,
   nachTagen,
+  wasUndWo,
   type MeinZeiteintrag,
 } from "./anzeige";
 
@@ -28,6 +29,8 @@ function eintrag(
     taetigkeit_name: "Unterhaltsreinigung",
     angelegt_von: ICH,
     angelegt_von_name: "Aylin Demir",
+    zusatzauftrag_id: null,
+    zusatzauftrag_beschreibung: null,
     ...ort,
   };
 }
@@ -118,4 +121,18 @@ test("Die 12 Stunden gelten auch über die Zeitumstellung hinweg als echte Stund
   const beginn = "2026-10-24T18:15:00Z";
   expect(istUnvollstaendig({ beginn, ende: null }, Date.parse("2026-10-25T06:14:59Z"))).toBe(false);
   expect(istUnvollstaendig({ beginn, ende: null }, Date.parse("2026-10-25T06:15:01Z"))).toBe(true);
+});
+
+test("Was und wo nennt Objekt, Tätigkeit und gegebenenfalls den Zusatzauftrag", () => {
+  const regulaer = {
+    art: "taetigkeit" as const,
+    objekt_bezeichnung: "Wohnanlage Ringstraße",
+    taetigkeit_name: "Rasenmähen",
+    zusatzauftrag_beschreibung: null,
+  };
+  expect(wasUndWo(regulaer)).toBe("Wohnanlage Ringstraße · Rasenmähen");
+  expect(wasUndWo({ ...regulaer, zusatzauftrag_beschreibung: "Sturmschaden" })).toBe(
+    "Wohnanlage Ringstraße · Rasenmähen · Zusatzauftrag: Sturmschaden",
+  );
+  expect(wasUndWo({ art: "fahrt", objekt_bezeichnung: null, taetigkeit_name: null })).toBe("Fahrt");
 });

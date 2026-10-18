@@ -9,6 +9,8 @@ type Stand = {
   art: ZeiteintragArt;
   objekt_id: string | null;
   taetigkeit_id: string | null;
+  // Fehlt in Ständen von vor #17.
+  zusatzauftrag_id?: string | null;
   beginn: string;
   ende: string | null;
   nachtrag: boolean;
@@ -30,10 +32,12 @@ export type ProtokollZeile = {
   nachher: Stand;
 };
 
-// Namen der Objekte und Tätigkeiten je Kennung, auch archivierte.
+// Namen der Objekte und Tätigkeiten je Kennung, auch archivierte, und
+// Beschreibungen der Zusatzaufträge.
 export type Namen = {
   objekte: Map<string, string>;
   taetigkeiten: Map<string, string>;
+  zusatzauftraege: Map<string, string>;
 };
 
 export type Aenderung = { feld: string; vorher: string; nachher: string };
@@ -74,6 +78,7 @@ function felder(stand: Stand, namen: Namen): [string, string][] {
     [t.art, artAlsText(stand.art)],
     [t.objekt, nameAlsText(namen.objekte, stand.objekt_id)],
     [t.taetigkeit, nameAlsText(namen.taetigkeiten, stand.taetigkeit_id)],
+    [t.zusatzauftrag, nameAlsText(namen.zusatzauftraege, stand.zusatzauftrag_id ?? null)],
     [t.beginn, zeitAlsText(stand.beginn)],
     [t.ende, zeitAlsText(stand.ende)],
     [t.nachtrag, stand.nachtrag ? t.ja : t.nein],
