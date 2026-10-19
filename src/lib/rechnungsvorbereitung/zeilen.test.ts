@@ -22,8 +22,8 @@ test("Pauschalen je Monat und Stunden je Objekt und Tätigkeit werden mit Namen 
     kunde: { rundungsregel: "15-minuten", abrechnungszeitraum: "monatlich" },
     ersterMonat: "2026-03",
     objekte: [
-      { id: "o-pauschal", abrechnungsart: "pauschale", pauschaleCent: 50000 },
-      { id: "o-stunden", abrechnungsart: "stunden", pauschaleCent: null },
+      { id: "o-pauschal", abrechnungsart: "pauschale", pauschaleCent: 50000, archiviert: false },
+      { id: "o-stunden", abrechnungsart: "stunden", pauschaleCent: null, archiviert: false },
     ],
     taetigkeiten: [
       { id: "t-unterhalt", standardStundensatzCent: 3000, kundenStundensatzCent: null },

@@ -125,11 +125,89 @@ test("Zusatzaufträge sieht, legt an und ändert nur das Büro der eigenen Firma
   await alsBuero.from("zusatzauftrag").update({ erledigt: true }).eq("id", id);
   const ohneErledigte = await alsMitarbeiter.rpc("zusatzauftraege_zur_auswahl");
   expect(ohneErledigte.data.some((za: { id: string }) => za.id === id)).toBe(false);
-  // Außer dem ausdrücklich dazu erbetenen, z. B. dem bisherigen eines Eintrags.
+  // Den bisherigen eines eigenen Eintrags bekommt er dazu, sonst nicht.
+  const ohneEintrag = await alsMitarbeiter.rpc("zusatzauftraege_zur_auswahl", { dazu: id });
+  expect(ohneEintrag.data.some((za: { id: string }) => za.id === id)).toBe(false);
+  const { taetigkeitId } = await legeTaetigkeitAn(dienstZugang()!, firmaA.id);
+  await legeZeiteintragAn(dienstZugang()!, {
+    firmaId: firmaA.id,
+    mitarbeiterId: mitarbeiter.id,
+    objektId,
+    taetigkeitId,
+    zusatzauftragId: id,
+    beginn: "2026-03-16T07:00:13Z",
+    ende: "2026-03-16T08:00:41Z",
+  });
   const mitBisherigem = await alsMitarbeiter.rpc("zusatzauftraege_zur_auswahl", { dazu: id });
   expect(mitBisherigem.data.find((za: { id: string }) => za.id === id)).toMatchObject({
     erledigt: true,
   });
+  // Einem anderen Mitarbeiter nicht, auch wenn er danach fragt.
+  const andererMitarbeiter = await schnittstelleAls(await legeEigenenZugangAn(firmaA.id));
+  const fremderEintrag = await andererMitarbeiter.rpc("zusatzauftraege_zur_auswahl", { dazu: id });
+  expect(fremderEintrag.data.some((za: { id: string }) => za.id === id)).toBe(false);
+});
+
+test("Zusatzaufträge archivierter Objekte stehen nicht zur Auswahl", async () => {
+  const { firmaA } = testdaten();
+  const dienst = dienstZugang()!;
+  const { objektId } = await legeKundeMitObjektAn(dienst, firmaA.id);
+  const { zusatzauftragId } = await legeZusatzauftragAn(dienst, firmaA.id, objektId);
+  const alsMitarbeiter = await schnittstelleAls(await legeEigenenZugangAn(firmaA.id));
+  const zurAuswahl = async () =>
+    (await alsMitarbeiter.rpc("zusatzauftraege_zur_auswahl")).data.some(
+      (za: { id: string }) => za.id === zusatzauftragId,
+    );
+
+  expect(await zurAuswahl()).toBe(true);
+  const { error } = await dienst.from("objekt").update({ archiviert: true }).eq("id", objektId);
+  expect(error).toBeNull();
+  expect(await zurAuswahl()).toBe(false);
+});
+
+test("Ist für einen Zusatzauftrag schon Zeit abgerechnet, bleibt seine Abrechnungsart", async () => {
+  const { firmaA } = testdaten();
+  const dienst = dienstZugang()!;
+  const objekt = await objektMitMitarbeiter(firmaA.id);
+  const sturm = await legeZusatzauftragAn(dienst, firmaA.id, objekt.objektId);
+  const alsBuero = await schnittstelleAls(await legeEigenenZugangAn(firmaA.id, "buero"));
+  const zuFestbetrag = () =>
+    alsBuero
+      .from("zusatzauftrag")
+      .update({ abrechnungsart: "festbetrag", festbetrag_cent: 50000 })
+      .eq("id", sturm.zusatzauftragId)
+      .select("id");
+  // 09.03., 07:01:17–09:14:52 in Berlin: gehört zum März.
+  const eintrag = await objekt.eintrag(
+    "2026-03-09T06:01:17Z",
+    "2026-03-09T08:14:52Z",
+    sturm.zusatzauftragId,
+  );
+  await gebeFrei([eintrag]);
+
+  const { data: abrechnungId, error } = await alsBuero.rpc("als_abgerechnet_markieren", {
+    fuer_kunde: objekt.kundeId,
+    ab_monat: "2026-03-01",
+    eintraege: [eintrag],
+    monate: [],
+    aufstellung: [{ art: "zusatzauftrag-stunden", zusatzauftragId: sturm.zusatzauftragId }],
+    summe: 6750,
+  });
+  expect(error).toBeNull();
+  expect((await zuFestbetrag()).error?.code).toBe("23514");
+  // Die Beschreibung lässt sich weiter ändern, der Zusatzauftrag ist ja offen.
+  const umbenannt = await alsBuero
+    .from("zusatzauftrag")
+    .update({ beschreibung: "Sturmschaden, 2. Teil" })
+    .eq("id", sturm.zusatzauftragId)
+    .select("id");
+  expect(umbenannt.data).toHaveLength(1);
+
+  // Nach der Rücknahme ist keine Zeit mehr abgerechnet.
+  await alsBuero.rpc("abrechnung_zuruecknehmen", { welche: abrechnungId });
+  const umgestellt = await zuFestbetrag();
+  expect(umgestellt.error).toBeNull();
+  expect(umgestellt.data).toHaveLength(1);
 });
 
 test("Ein Festbetrag gibt es nur bei Abrechnungsart Festbetrag, und dort ist er Pflicht", async () => {

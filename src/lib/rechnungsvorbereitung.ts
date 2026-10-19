@@ -18,6 +18,9 @@ export type Objekt = {
   id: string;
   abrechnungsart: "pauschale" | "stunden";
   pauschaleCent: number | null;
+  // Ein archiviertes Pauschal-Objekt bekommt keine Pauschale mehr; Zeit
+  // für seine Zusatzaufträge wird noch abgerechnet.
+  archiviert: boolean;
 };
 
 export type Taetigkeit = {
@@ -119,7 +122,7 @@ export function rechnungsvorbereitung(eingabe: Eingabe): Rechnungsvorbereitung {
 
   const positionen: Position[] = [];
   for (const objekt of eingabe.objekte) {
-    if (objekt.abrechnungsart !== "pauschale") continue;
+    if (objekt.abrechnungsart !== "pauschale" || objekt.archiviert) continue;
     for (const monat of monate) {
       const schonAbgerechnet = eingabe.abgerechnetePauschalMonate.some(
         (a) => a.objektId === objekt.id && a.monat === monat,

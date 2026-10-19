@@ -14,11 +14,13 @@ const pauschalObjekt: Objekt = {
   id: "buero-haus",
   abrechnungsart: "pauschale",
   pauschaleCent: 45000,
+  archiviert: false,
 };
 const stundenObjekt: Objekt = {
   id: "villa",
   abrechnungsart: "stunden",
   pauschaleCent: null,
+  archiviert: false,
 };
 
 function eingabe(aenderungen: Partial<Eingabe> = {}): Eingabe {
@@ -342,6 +344,44 @@ test("Ein Zusatzauftrag nach Stunden in einem Pauschal-Objekt wird je Zusatzauft
   ]);
   expect(ergebnis.stundennachweis).toMatchObject([
     { datum: "2026-07-06", zusatzauftragId: "sturmschaden", minuten: 120, personen: 1 },
+  ]);
+});
+
+test("Ein archiviertes Pauschal-Objekt bekommt keine Pauschale mehr, sein Zusatzauftrag nach Stunden wird aber abgerechnet", () => {
+  const ergebnis = rechnungsvorbereitung(
+    eingabe({
+      objekte: [{ ...pauschalObjekt, archiviert: true }],
+      zusatzauftraege: [
+        {
+          id: "sturmschaden",
+          objektId: "buero-haus",
+          abrechnungsart: "stunden",
+          festbetragCent: null,
+          erledigt: false,
+        },
+      ],
+      zeiteintraege: [
+        eintrag("2026-07-06T08:00:00+02:00", "2026-07-06T08:52:31+02:00", {
+          objektId: "buero-haus",
+          zusatzauftragId: "sturmschaden",
+        }),
+        // Reguläre Zeit bleibt mit der Pauschale bezahlt
+        eintrag("2026-07-06T09:00:00+02:00", "2026-07-06T10:00:00+02:00", {
+          objektId: "buero-haus",
+        }),
+      ],
+    }),
+  );
+  expect(ergebnis.positionen).toEqual([
+    {
+      art: "zusatzauftrag-stunden",
+      zusatzauftragId: "sturmschaden",
+      objektId: "buero-haus",
+      taetigkeitId: "reinigung",
+      minuten: 60,
+      stundensatzCent: 3000,
+      betragCent: 3000,
+    },
   ]);
 });
 

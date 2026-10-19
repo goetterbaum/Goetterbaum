@@ -196,15 +196,14 @@ export async function ladeRechnungsvorbereitung(
   const ergebnis = rechnungsvorbereitung({
     kunde: { rundungsregel, abrechnungszeitraum: kunde.abrechnungszeitraum },
     ersterMonat: zeitraum.ersterMonat,
-    // Ein archiviertes Pauschal-Objekt bekommt keine Pauschale mehr; die
-    // Zeit in archivierten Stunden-Objekten wird noch abgerechnet.
-    objekte: objekte.data
-      .filter((o) => !o.archiviert || o.abrechnungsart === "stunden")
-      .map((o) => ({
-        id: o.id,
-        abrechnungsart: o.abrechnungsart,
-        pauschaleCent: o.pauschale_cent,
-      })),
+    // Auch archivierte: Ihre Zeit wird noch abgerechnet, nur Pauschalen
+    // gibt es für sie keine mehr.
+    objekte: objekte.data.map((o) => ({
+      id: o.id,
+      abrechnungsart: o.abrechnungsart,
+      pauschaleCent: o.pauschale_cent,
+      archiviert: o.archiviert,
+    })),
     taetigkeiten: taetigkeiten.taetigkeiten,
     // Ein wartender gilt als noch nicht erledigt.
     zusatzauftraege: zusatzauftraege.map((za) =>

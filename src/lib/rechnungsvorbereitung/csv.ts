@@ -30,7 +30,8 @@ export function rechnungsCsv({ zeilen, summeCent }: Zeilen): string {
     z.stundensatzCent === null ? "" : euroAlsEingabe(z.stundensatzCent),
     euroAlsEingabe(z.betragCent),
   ]);
-  const summe = [t.summe, "", "", "", "", "", "", "", euroAlsEingabe(summeCent)];
+  // Die Summe steht in der letzten Spalte, darunter die Beträge.
+  const summe = [t.summe, ...kopf.slice(2).map(() => ""), euroAlsEingabe(summeCent)];
   return "﻿" + [kopf, ...zeilenAlsText, summe].map((z) => z.join(";") + "\r\n").join("");
 }
 

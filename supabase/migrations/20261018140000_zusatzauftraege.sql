@@ -590,9 +590,9 @@ grant execute on function public.abrechnungen_des_kunden(uuid) to authenticated;
 -- ---------------------------------------------------------------------------
 
 -- Die offenen Zusatzaufträge aktiver Objekte der eigenen Firma zum
--- Auswählen, ohne Festbetrag. dazu: ein weiterer Zusatzauftrag der Firma,
--- der auch erledigt sein darf, z. B. der bisherige eines Eintrags, den
--- jemand ändert.
+-- Auswählen, ohne Festbetrag. dazu: der bisherige Zusatzauftrag eines
+-- Eintrags, den jemand ändert; er darf auch erledigt sein. Ihn bekommt
+-- nur, wer einen Zeiteintrag dieses Zusatzauftrags sehen darf.
 create function public.zusatzauftraege_zur_auswahl(dazu uuid default null)
 returns table (id uuid, objekt_id uuid, beschreibung text, erledigt boolean)
 language sql
@@ -605,7 +605,20 @@ as $$
   join public.objekt o on o.id = za.objekt_id
   where za.firma_id = privat.meine_firma_id()
     and za.abgerechnet_in is null
-    and ((not za.erledigt and not o.archiviert) or za.id = dazu)
+    and (
+      (not za.erledigt and not o.archiviert)
+      or (
+        za.id = dazu
+        and exists (
+          select 1 from public.zeiteintrag z
+          where z.zusatzauftrag_id = za.id
+            and (
+              z.mitarbeiter_id = privat.meine_mitarbeiter_id()
+              or privat.meine_rolle() in ('vorarbeiter', 'buero')
+            )
+        )
+      )
+    )
   order by za.beschreibung, za.id
 $$;
 
