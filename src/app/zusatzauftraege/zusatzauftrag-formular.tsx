@@ -7,25 +7,44 @@ import { START, type Rueckmeldung } from "@/lib/rueckmeldung";
 import type { ZusatzauftragDaten } from "@/lib/zusatzauftraege/eingabe";
 import { texte } from "@/texte";
 
+function felderAus(vorgabe?: ZusatzauftragDaten) {
+  return {
+    beschreibung: vorgabe?.beschreibung ?? "",
+    abrechnungsart: vorgabe?.abrechnungsart ?? ("stunden" as ZusatzauftragAbrechnungsart),
+    festbetrag: vorgabe?.festbetrag_cent ? euroAlsEingabe(vorgabe.festbetrag_cent) : "",
+  };
+}
+
 // Formular für einen Zusatzauftrag, zum Anlegen wie zum Bearbeiten. Das
 // Feld für den Festbetrag erscheint nur bei Abrechnungsart Festbetrag.
+// Alle Felder hält das Formular selbst: React setzt Formulare nach jeder
+// Aktion zurück, auch nach einer Fehlermeldung, und eine gewählte
+// Abrechnungsart sprang dabei sonst unsichtbar zurück. Mit leeren werden
+// die Felder nach dem Speichern geleert (beim Anlegen).
 export function ZusatzauftragFormular({
   aktion,
   vorgabe,
+  leeren = false,
   titel,
   knopf,
   knopfLaeuft,
 }: {
   aktion: (vorher: Rueckmeldung, formData: FormData) => Promise<Rueckmeldung>;
   vorgabe?: ZusatzauftragDaten;
+  leeren?: boolean;
   titel?: string;
   knopf: string;
   knopfLaeuft: string;
 }) {
   const t = texte.zusatzauftraege;
-  const [zustand, ausfuehren, laeuft] = useActionState(aktion, START);
-  const [abrechnungsart, setAbrechnungsart] = useState<ZusatzauftragAbrechnungsart>(
-    vorgabe?.abrechnungsart ?? "stunden",
+  const [felder, setFelder] = useState(() => felderAus(vorgabe));
+  const [zustand, ausfuehren, laeuft] = useActionState(
+    async (vorher: Rueckmeldung, formData: FormData) => {
+      const ergebnis = await aktion(vorher, formData);
+      if (!ergebnis.fehler && leeren) setFelder(felderAus());
+      return ergebnis;
+    },
+    START,
   );
 
   return (
@@ -35,7 +54,12 @@ export function ZusatzauftragFormular({
         <label>
           {t.beschreibung}
           <br />
-          <input name="beschreibung" defaultValue={vorgabe?.beschreibung} required />
+          <input
+            name="beschreibung"
+            value={felder.beschreibung}
+            onChange={(e) => setFelder({ ...felder, beschreibung: e.target.value })}
+            required
+          />
         </label>
       </p>
       <p>
@@ -44,8 +68,13 @@ export function ZusatzauftragFormular({
           <br />
           <select
             name="abrechnungsart"
-            value={abrechnungsart}
-            onChange={(e) => setAbrechnungsart(e.target.value as ZusatzauftragAbrechnungsart)}
+            value={felder.abrechnungsart}
+            onChange={(e) =>
+              setFelder({
+                ...felder,
+                abrechnungsart: e.target.value as ZusatzauftragAbrechnungsart,
+              })
+            }
           >
             {ZUSATZAUFTRAG_ABRECHNUNGSARTEN.map((art) => (
               <option key={art} value={art}>
@@ -55,7 +84,7 @@ export function ZusatzauftragFormular({
           </select>
         </label>
       </p>
-      {abrechnungsart === "festbetrag" && (
+      {felder.abrechnungsart === "festbetrag" && (
         <p>
           <label>
             {t.festbetrag}
@@ -63,7 +92,8 @@ export function ZusatzauftragFormular({
             <input
               name="festbetrag"
               inputMode="decimal"
-              defaultValue={vorgabe?.festbetrag_cent ? euroAlsEingabe(vorgabe.festbetrag_cent) : ""}
+              value={felder.festbetrag}
+              onChange={(e) => setFelder({ ...felder, festbetrag: e.target.value })}
               required
             />
           </label>

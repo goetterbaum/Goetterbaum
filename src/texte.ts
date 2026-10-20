@@ -246,7 +246,8 @@ export const texte = {
     objekt: "Objekt",
     zumObjekt: "Zurück zum Objekt",
     beschreibung: "Beschreibung",
-    abrechnungsart: "Abrechnungsart",
+    // Nicht nur „Abrechnungsart“: Auf der Objektseite steht auch die des Objekts.
+    abrechnungsart: "Abrechnung des Zusatzauftrags",
     festbetrag: "Festbetrag in Euro",
     angelegt: "Zusatzauftrag angelegt.",
     alsErledigtMarkieren: "Als erledigt markieren",

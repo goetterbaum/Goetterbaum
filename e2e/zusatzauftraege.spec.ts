@@ -34,7 +34,7 @@ test("Das Büro legt Zusatzaufträge an, bearbeitet sie und markiert sie als erl
   const bereich = page.getByRole("region", { name: "Zusatzaufträge" });
   await expect(bereich.getByText("Noch keine Zusatzaufträge angelegt.")).toBeVisible();
   const beschreibung = bereich.getByLabel("Beschreibung", { exact: true });
-  const abrechnungsart = bereich.getByRole("combobox", { name: /^Abrechnungsart/ });
+  const abrechnungsart = bereich.getByRole("combobox", { name: /^Abrechnung des Zusatzauftrags/ });
   const festbetrag = bereich.getByLabel("Festbetrag in Euro", { exact: true });
   const zeile = (text: string) => bereich.getByRole("row").filter({ hasText: text });
 
@@ -55,11 +55,15 @@ test("Das Büro legt Zusatzaufträge an, bearbeitet sie und markiert sie als erl
   await expect(bereich.getByRole("alert")).toHaveText(
     "Der Festbetrag ist kein gültiger Betrag. Beispiel: 890,00",
   );
-  // React leert das Formular nach jeder Aktion.
-  await beschreibung.fill(grundreinigung);
+  // Nach der Fehlermeldung bleibt alles stehen, auch die Abrechnungsart.
+  await expect(beschreibung).toHaveValue(grundreinigung);
+  await expect(abrechnungsart).toHaveValue("festbetrag");
   await festbetrag.fill("1.890,50");
   await bereich.getByRole("button", { name: "Anlegen" }).click();
   await expect(zeile(grundreinigung)).toContainText("Festbetrag 1.890,50 €");
+  // Nach dem Anlegen ist das Formular leer für den nächsten.
+  await expect(beschreibung).toHaveValue("");
+  await expect(abrechnungsart).toHaveValue("stunden");
   expect(await zusatzauftragAusDatenbank(grundreinigung)).toEqual({
     abrechnungsart: "festbetrag",
     festbetrag_cent: 189050,
@@ -72,7 +76,7 @@ test("Das Büro legt Zusatzaufträge an, bearbeitet sie und markiert sie als erl
   const geaendert = `${sturmschaden} Nordseite`;
   await feld(page, "Beschreibung").fill(geaendert);
   await page
-    .getByRole("combobox", { name: /^Abrechnungsart/ })
+    .getByRole("combobox", { name: /^Abrechnung des Zusatzauftrags/ })
     .selectOption({ label: "Festbetrag" });
   await feld(page, "Festbetrag in Euro").fill("450");
   await page.getByRole("button", { name: "Speichern" }).click();

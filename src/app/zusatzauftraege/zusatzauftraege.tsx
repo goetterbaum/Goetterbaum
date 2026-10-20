@@ -72,6 +72,7 @@ export async function Zusatzauftraege({
       ) : (
         <ZusatzauftragFormular
           aktion={zusatzauftragAnlegen.bind(null, objekt.id)}
+          leeren
           titel={t.neuTitel}
           knopf={texte.stammdaten.anlegen}
           knopfLaeuft={texte.stammdaten.anlegenLaeuft}
