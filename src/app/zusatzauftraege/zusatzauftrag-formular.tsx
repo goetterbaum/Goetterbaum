@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useState } from "react";
 import { ZUSATZAUFTRAG_ABRECHNUNGSARTEN, type ZusatzauftragAbrechnungsart } from "@/lib/abrechnung";
 import { euroAlsEingabe } from "@/lib/geld";
 import { START, type Rueckmeldung } from "@/lib/rueckmeldung";
@@ -17,10 +17,11 @@ function felderAus(vorgabe?: ZusatzauftragDaten) {
 
 // Formular für einen Zusatzauftrag, zum Anlegen wie zum Bearbeiten. Das
 // Feld für den Festbetrag erscheint nur bei Abrechnungsart Festbetrag.
-// Alle Felder hält das Formular selbst: React setzt Formulare nach jeder
-// Aktion zurück, auch nach einer Fehlermeldung, und eine gewählte
-// Abrechnungsart sprang dabei sonst unsichtbar zurück. Mit leeren werden
-// die Felder nach dem Speichern geleert (beim Anlegen).
+// Alle Felder hält das Formular selbst, und es schickt selbst ab statt
+// über das action-Attribut: Sonst setzt React das Formular nach jeder
+// Aktion zurück, auch nach einer Fehlermeldung, und die Auswahlliste der
+// Abrechnungsart sprang dabei unsichtbar auf die erste Möglichkeit. Mit
+// leeren werden die Felder nach dem Speichern geleert (beim Anlegen).
 export function ZusatzauftragFormular({
   aktion,
   vorgabe,
@@ -48,7 +49,13 @@ export function ZusatzauftragFormular({
   );
 
   return (
-    <form action={ausfuehren}>
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        const formData = new FormData(e.currentTarget);
+        startTransition(() => ausfuehren(formData));
+      }}
+    >
       {titel && <h3>{titel}</h3>}
       <p>
         <label>
