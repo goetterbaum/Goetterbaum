@@ -38,8 +38,9 @@ const MELDUNGEN = {
 };
 
 // Nachtragen oder Ändern eines beendeten Zeiteintrags: Tätigkeit in einem
-// Objekt (gegebenenfalls mit Zusatzauftrag) oder Fahrt, Datum, von–bis. Nach dem Speichern geht es zurück zur
-// Erfassung, aus der man kam (zurueck): der eigenen oder der eines anderen.
+// Objekt (gegebenenfalls mit Zusatzauftrag) oder Fahrt, Datum, von–bis.
+// Nach dem Speichern geht es zurück zur Erfassung, aus der man kam
+// (zurueck): der eigenen oder der eines anderen.
 export function NachtragFormular({
   aktion,
   zurueck,

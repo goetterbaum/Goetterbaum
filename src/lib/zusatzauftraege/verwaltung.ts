@@ -8,6 +8,10 @@ export type Zusatzauftrag = ZusatzauftragDaten & {
   erledigt: boolean;
 };
 
+export type ZusatzauftragMitObjekt = Zusatzauftrag & {
+  objekt: { bezeichnung: string; archiviert: boolean };
+};
+
 const SPALTEN = "id, objekt_id, beschreibung, abrechnungsart, festbetrag_cent, erledigt";
 
 // Alle Zusatzaufträge eines Objekts, die offenen zuerst. Welche der Nutzer
@@ -33,13 +37,13 @@ export async function ladeZusatzauftraegeDesObjekts(
 export async function ladeZusatzauftrag(
   supabase: SupabaseClient,
   id: string,
-): Promise<(Zusatzauftrag & { objekt: { bezeichnung: string; archiviert: boolean } }) | null> {
+): Promise<ZusatzauftragMitObjekt | null> {
   if (!istId(id)) return null;
   const { data, error } = await supabase
     .from("zusatzauftrag")
     .select(`${SPALTEN}, objekt(bezeichnung, archiviert)`)
     .eq("id", id)
-    .maybeSingle<Zusatzauftrag & { objekt: { bezeichnung: string; archiviert: boolean } }>();
+    .maybeSingle<ZusatzauftragMitObjekt>();
   if (error) throw error;
   return data;
 }

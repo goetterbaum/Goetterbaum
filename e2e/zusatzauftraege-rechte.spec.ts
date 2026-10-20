@@ -210,6 +210,9 @@ test("Ein Zeiteintrag gehört nur zu einem offenen Zusatzauftrag desselben Objek
     erledigt: true,
   });
   const fremd = await legeZusatzauftragAn(dienst, firmaB.id, fremdesObjekt.objektId);
+  const fremdErledigt = await legeZusatzauftragAn(dienst, firmaB.id, fremdesObjekt.objektId, {
+    erledigt: true,
+  });
   const supabase = await schnittstelleAls(ich);
   const nachtrag = {
     firma_id: firmaA.id,
@@ -226,6 +229,8 @@ test("Ein Zeiteintrag gehört nur zu einem offenen Zusatzauftrag desselben Objek
   for (const [falsch, code] of [
     [{ zusatzauftrag_id: amAnderen.zusatzauftragId }, "23503"],
     [{ zusatzauftrag_id: fremd.zusatzauftragId }, "23503"],
+    // Auch bei einem erledigten verrät die Meldung nichts über die fremde Firma.
+    [{ zusatzauftrag_id: fremdErledigt.zusatzauftragId }, "23503"],
     [
       {
         art: "fahrt",

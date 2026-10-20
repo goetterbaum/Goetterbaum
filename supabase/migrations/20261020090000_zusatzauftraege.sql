@@ -134,7 +134,8 @@ grant update (zusatzauftrag_id) on public.zeiteintrag to authenticated;
 -- Neu zuordnen nur einen offenen Zusatzauftrag, aber nur wenn sich die
 -- Zuordnung ändert: Ein Eintrag mit inzwischen erledigtem Zusatzauftrag
 -- bleibt änderbar. "security definer", weil Mitarbeiter die Tabelle
--- zusatzauftrag selbst nicht lesen dürfen. Dass der Zusatzauftrag zu
+-- zusatzauftrag selbst nicht lesen dürfen; deshalb auch nur in der Firma
+-- des Eintrags, damit nichts über fremde Firmen nach außen dringt. Dass der Zusatzauftrag zu
 -- Objekt und Firma passt, sichert der Fremdschlüssel.
 create function privat.zeiteintrag_nur_offener_zusatzauftrag()
 returns trigger
@@ -147,7 +148,11 @@ begin
     return new;
   end if;
   if exists (
-    select 1 from public.zusatzauftrag za where za.id = new.zusatzauftrag_id and za.erledigt
+    select 1
+    from public.zusatzauftrag za
+    where za.id = new.zusatzauftrag_id
+      and za.firma_id = new.firma_id
+      and za.erledigt
   ) then
     raise exception 'Der Zusatzauftrag ist schon erledigt.'
       using errcode = 'check_violation';
