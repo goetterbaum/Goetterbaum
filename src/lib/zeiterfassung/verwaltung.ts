@@ -23,18 +23,29 @@ export type ObjektZurAuswahl = {
 
 export type TaetigkeitZurAuswahl = { id: string; name: string; sparte: Sparte };
 
-// Die aktiven Objekte und Tätigkeiten der eigenen Firma.
+// Ein offener Zusatzauftrag, ohne Abrechnungsart und Festbetrag.
+export type ZusatzauftragZurAuswahl = { id: string; objekt_id: string; beschreibung: string };
+
+// Die aktiven Objekte und Tätigkeiten der eigenen Firma und die offenen
+// Zusatzaufträge dieser Objekte.
 export async function ladeAuswahl(supabase: SupabaseClient): Promise<{
   objekte: ObjektZurAuswahl[];
   taetigkeiten: TaetigkeitZurAuswahl[];
+  zusatzauftraege: ZusatzauftragZurAuswahl[];
 }> {
-  const [objekte, taetigkeiten] = await Promise.all([
+  const [objekte, taetigkeiten, zusatzauftraege] = await Promise.all([
     supabase.rpc("objekte_zur_auswahl"),
     supabase.rpc("taetigkeiten_zur_auswahl"),
+    supabase.rpc("zusatzauftraege_zur_auswahl"),
   ]);
   if (objekte.error) throw objekte.error;
   if (taetigkeiten.error) throw taetigkeiten.error;
-  return { objekte: objekte.data, taetigkeiten: taetigkeiten.data };
+  if (zusatzauftraege.error) throw zusatzauftraege.error;
+  return {
+    objekte: objekte.data,
+    taetigkeiten: taetigkeiten.data,
+    zusatzauftraege: zusatzauftraege.data,
+  };
 }
 
 // Die Zeiteinträge eines Mitarbeiters in den angezeigten Tagen und immer
@@ -100,6 +111,7 @@ export type ZeiteintragZumAendern = {
   art: ZeiteintragArt;
   objekt_id: string | null;
   taetigkeit_id: string | null;
+  zusatzauftrag_id: string | null;
   beginn: string;
   ende: string | null;
   unvollstaendig: boolean;
@@ -115,7 +127,7 @@ export async function ladeZeiteintragZumAendern(
   const { data, error } = await supabase
     .from("zeiteintrag")
     .select(
-      "id, mitarbeiter_id, art, objekt_id, taetigkeit_id, beginn, ende, freigegeben_am, abgerechnet_in",
+      "id, mitarbeiter_id, art, objekt_id, taetigkeit_id, zusatzauftrag_id, beginn, ende, freigegeben_am, abgerechnet_in",
     )
     .eq("id", id)
     .maybeSingle<
@@ -136,13 +148,15 @@ export async function ladeZeiteintragZumAendern(
 }
 
 // Ein Zeiteintrag, wie ihn das Büro in der Übersicht und bei der Freigabe
-// sieht. Kunde und Objekt fehlen bei Fahrten.
+// sieht. Kunde und Objekt fehlen bei Fahrten, der Zusatzauftrag bei
+// regulärer Arbeit.
 export type ZeiteintragDerFirma = Omit<MeinZeiteintrag, "angelegt_von" | "freigegeben"> & {
   mitarbeiter_id: string;
   mitarbeiter_name: string;
   objekt_id: string | null;
   kunde_id: string | null;
   kunde_name: string | null;
+  zusatzauftrag_id: string | null;
   freigegeben_am: string | null;
   freigegeben_von_name: string | null;
 };

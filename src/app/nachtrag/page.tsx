@@ -54,6 +54,7 @@ async function Formular({
           art: "taetigkeit",
           objekt_id: "",
           taetigkeit_id: "",
+          zusatzauftrag_id: "",
           datum: heuteInBerlin(),
           von: "",
           bis: "",

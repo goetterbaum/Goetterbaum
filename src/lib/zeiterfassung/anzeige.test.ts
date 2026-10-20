@@ -5,6 +5,7 @@ import {
   istUnvollstaendig,
   laeuftSeit,
   nachTagen,
+  wasUndWo,
   type MeinZeiteintrag,
 } from "./anzeige";
 
@@ -26,6 +27,7 @@ function eintrag(
     freigegeben: false,
     objekt_bezeichnung: "Haus A",
     taetigkeit_name: "Unterhaltsreinigung",
+    zusatzauftrag_beschreibung: null,
     angelegt_von: ICH,
     angelegt_von_name: "Aylin Demir",
     ...ort,
@@ -118,4 +120,17 @@ test("Die 12 Stunden gelten auch über die Zeitumstellung hinweg als echte Stund
   const beginn = "2026-10-24T18:15:00Z";
   expect(istUnvollstaendig({ beginn, ende: null }, Date.parse("2026-10-25T06:14:59Z"))).toBe(false);
   expect(istUnvollstaendig({ beginn, ende: null }, Date.parse("2026-10-25T06:15:01Z"))).toBe(true);
+});
+
+test("Was und wo: die Fahrt oder Objekt und Tätigkeit, dazu ein zugeordneter Zusatzauftrag", () => {
+  const regulaer = eintrag("regulaer", "2026-10-16T06:00:00Z", "2026-10-16T08:30:00Z");
+  const sturmschaden = eintrag("sturm", "2026-10-16T08:30:00Z", "2026-10-16T11:07:42Z", {
+    taetigkeit_name: "Gartenpflege",
+    zusatzauftrag_beschreibung: "Sturmschaden Hof",
+  });
+  const fahrt = eintrag("fahrt", "2026-10-16T11:07:42Z", "2026-10-16T11:31:05Z", FAHRT);
+
+  expect(wasUndWo(regulaer)).toBe("Haus A · Unterhaltsreinigung");
+  expect(wasUndWo(sturmschaden)).toBe("Haus A · Gartenpflege · Zusatzauftrag: Sturmschaden Hof");
+  expect(wasUndWo(fahrt)).toBe("Fahrt");
 });

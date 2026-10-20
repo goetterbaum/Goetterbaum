@@ -23,3 +23,12 @@ export type Rundungsregel = (typeof RUNDUNGSREGELN)[number];
 export function istRundungsregel(wert: string): wert is Rundungsregel {
   return (RUNDUNGSREGELN as readonly string[]).includes(wert);
 }
+
+// Abrechnungsart eines Zusatzauftrags, abweichend von der des Objekts, wie
+// in der Datenbank (Typ public.zusatzauftrag_abrechnungsart).
+export const ZUSATZAUFTRAG_ABRECHNUNGSARTEN = ["stunden", "festbetrag"] as const;
+export type ZusatzauftragAbrechnungsart = (typeof ZUSATZAUFTRAG_ABRECHNUNGSARTEN)[number];
+
+export function istZusatzauftragAbrechnungsart(wert: string): wert is ZusatzauftragAbrechnungsart {
+  return (ZUSATZAUFTRAG_ABRECHNUNGSARTEN as readonly string[]).includes(wert);
+}

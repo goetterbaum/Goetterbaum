@@ -2,6 +2,7 @@ import { berlinerZeitpunkt } from "@/lib/berliner-zeit";
 import { istId } from "@/lib/id";
 import { texte } from "@/texte";
 import type { ZeiteintragArt } from "./anzeige";
+import { gewaehlterZusatzauftrag } from "./eingabe";
 
 // Die Angaben eines Nachtrags, wie sie in die Tabelle zeiteintrag gehen.
 // Dass er als Nachtrag markiert wird, erledigt die Datenbank selbst.
@@ -9,6 +10,8 @@ export type NachtragDaten = {
   art: ZeiteintragArt;
   objekt_id: string | null;
   taetigkeit_id: string | null;
+  // Leer bei regulärer Arbeit und bei Fahrten.
+  zusatzauftrag_id: string | null;
   // Zeitpunkte als ISO-Text
   beginn: string;
   ende: string;
@@ -33,13 +36,14 @@ function gleicheMinuteWie(eingegeben: number, gespeichert: string | undefined): 
 }
 
 // Prüft die Angaben aus dem Nachtrag-Formular: Art, bei einer Tätigkeit
-// Objekt und Tätigkeit, dazu Datum und von–bis in Berliner Zeit an diesem
-// Tag. jetzt ist der aktuelle Zeitpunkt (ms seit 1970). Beim Ändern ist
-// bisher der gespeicherte Eintrag: Bleibt eine Uhrzeit im Formular gleich,
-// bleibt auch der gespeicherte, sekundengenaue Zeitpunkt. Sonst würde jede
-// Änderung eines Live-Eintrags dessen Zeiten auf Minuten kürzen und ihn
-// zum Nachtrag machen. Ob Objekt und Tätigkeit aktiv sind und ob sich der
-// Eintrag mit einem anderen überschneidet, prüft die Datenbank.
+// Objekt, Tätigkeit und den freiwilligen Zusatzauftrag, dazu Datum und
+// von–bis in Berliner Zeit an diesem Tag. jetzt ist der aktuelle
+// Zeitpunkt (ms seit 1970). Beim Ändern ist bisher der gespeicherte
+// Eintrag: Bleibt eine Uhrzeit im Formular gleich, bleibt auch der
+// gespeicherte, sekundengenaue Zeitpunkt. Sonst würde jede Änderung eines
+// Live-Eintrags dessen Zeiten auf Minuten kürzen und ihn zum Nachtrag
+// machen. Ob Objekt, Tätigkeit und Zusatzauftrag zur Auswahl stehen und ob
+// sich der Eintrag mit einem anderen überschneidet, prüft die Datenbank.
 export function pruefeNachtragEingabe(
   formData: FormData,
   jetzt: number,
@@ -51,11 +55,15 @@ export function pruefeNachtragEingabe(
 
   let objekt_id: string | null = null;
   let taetigkeit_id: string | null = null;
+  let zusatzauftrag_id: string | null = null;
   if (art === "taetigkeit") {
     objekt_id = feld("objekt");
     taetigkeit_id = feld("taetigkeit");
     if (!istId(objekt_id)) return { ok: false, fehler: texte.erfassung.fehlerObjekt };
     if (!istId(taetigkeit_id)) return { ok: false, fehler: texte.erfassung.fehlerTaetigkeit };
+    const zusatzauftrag = gewaehlterZusatzauftrag(formData);
+    if (zusatzauftrag === false) return { ok: false, fehler: texte.erfassung.fehlerZusatzauftrag };
+    zusatzauftrag_id = zusatzauftrag;
   } else if (art !== "fahrt") {
     return { ok: false, fehler: t.fehlerArt };
   }
@@ -77,6 +85,7 @@ export function pruefeNachtragEingabe(
       art,
       objekt_id,
       taetigkeit_id,
+      zusatzauftrag_id,
       beginn: new Date(beginn).toISOString(),
       ende: new Date(ende).toISOString(),
     },

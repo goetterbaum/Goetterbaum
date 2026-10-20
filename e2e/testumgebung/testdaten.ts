@@ -168,6 +168,34 @@ export async function legeTaetigkeitAn(
   return { taetigkeitId: data.id, name: data.name };
 }
 
+// Legt einen Zusatzauftrag zu einem Objekt an, ohne über die App zu gehen.
+// Ohne Festbetrag wird nach Stunden abgerechnet.
+export async function legeZusatzauftragAn(
+  supabase: SupabaseClient,
+  firmaId: string,
+  objektId: string,
+  {
+    beschreibung = `Zusatzauftrag ${randomUUID().slice(0, 8)}`,
+    festbetragCent = null,
+    erledigt = false,
+  }: { beschreibung?: string; festbetragCent?: number | null; erledigt?: boolean } = {},
+) {
+  const { data, error } = await supabase
+    .from("zusatzauftrag")
+    .insert({
+      firma_id: firmaId,
+      objekt_id: objektId,
+      beschreibung,
+      abrechnungsart: festbetragCent === null ? "stunden" : "festbetrag",
+      festbetrag_cent: festbetragCent,
+      erledigt,
+    })
+    .select("id, beschreibung")
+    .single<{ id: string; beschreibung: string }>();
+  if (error) throw error;
+  return { zusatzauftragId: data.id, beschreibung: data.beschreibung };
+}
+
 // Ein frischer Zugang nur für einen Test. Zeiterfassungs-Tests brauchen
 // ihn, weil je Mitarbeiter nur ein Zeiteintrag laufen kann und die Tests
 // parallel laufen. Er verschwindet mit der Firma beim Aufräumen.
@@ -187,6 +215,7 @@ export async function legeZeiteintragAn(
     mitarbeiterId: string;
     objektId?: string;
     taetigkeitId?: string;
+    zusatzauftragId?: string;
     beginn: string;
     ende: string | null;
   },
@@ -201,6 +230,7 @@ export async function legeZeiteintragAn(
       art: fahrt ? "fahrt" : "taetigkeit",
       objekt_id: eintrag.objektId ?? null,
       taetigkeit_id: eintrag.taetigkeitId ?? null,
+      zusatzauftrag_id: eintrag.zusatzauftragId ?? null,
       beginn: eintrag.beginn,
       ende: eintrag.ende,
     })
