@@ -2,7 +2,12 @@
 // lässt ihn rechnen. Welche Daten der Nutzer sehen darf, entscheiden die
 // Zugriffsregeln der Datenbank (nur das Büro der eigenen Firma).
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Abrechnungsart, Abrechnungszeitraum, Rundungsregel } from "@/lib/abrechnung";
+import type {
+  Abrechnungsart,
+  Abrechnungszeitraum,
+  Rundungsregel,
+  ZusatzauftragAbrechnungsart,
+} from "@/lib/abrechnung";
 import { ladeFirma } from "@/lib/firma/verwaltung";
 import { ladeKunde, type Kunde } from "@/lib/kunden/verwaltung";
 import {
@@ -27,12 +32,25 @@ type ObjektZeile = {
   archiviert: boolean;
 };
 
+type ZusatzauftragZeile = {
+  id: string;
+  objekt_id: string;
+  beschreibung: string;
+  abrechnungsart: ZusatzauftragAbrechnungsart;
+  festbetrag_cent: number | null;
+  erledigt: boolean;
+};
+
+const ZEITEINTRAG_SPALTEN =
+  "id, mitarbeiter_id, art, objekt_id, taetigkeit_id, zusatzauftrag_id, beginn, ende";
+
 type ZeiteintragZeile = {
   id: string;
   mitarbeiter_id: string;
   art: Zeiteintrag["art"];
   objekt_id: string | null;
   taetigkeit_id: string | null;
+  zusatzauftrag_id: string | null;
   beginn: string;
   ende: string;
 };
@@ -78,8 +96,12 @@ export async function ladeRechnungsvorbereitung(
   if (taetigkeiten.error) throw taetigkeiten.error;
 
   const objektIds = objekte.data.map((o) => o.id);
+  const zusatzauftraege = await ladeNichtAbgerechneteZusatzauftraege(supabase, objektIds);
+  const erledigteFestbetraege = zusatzauftraege
+    .filter((za) => za.abrechnungsart === "festbetrag" && za.erledigt)
+    .map((za) => za.id);
   const [zeiteintraege, nichtFreigegeben, abgerechnetePauschalMonate] = await Promise.all([
-    ladeAbrechenbareZeiteintraege(supabase, objektIds, zeitraum),
+    ladeAbrechenbareZeiteintraege(supabase, objektIds, zeitraum, erledigteFestbetraege),
     zaehleNichtFreigegebene(supabase, objektIds, zeitraum),
     ladeAbgerechnetePauschalMonate(supabase, objektIds),
   ]);
@@ -102,15 +124,20 @@ export async function ladeRechnungsvorbereitung(
       kundenStundensatzCent:
         kundenSaetze.find((s) => s.taetigkeit_id === t.id)?.stundensatz_cent ?? null,
     })),
-    // Zusatzaufträge gibt es noch nicht (#17).
-    zusatzauftraege: [],
+    zusatzauftraege: zusatzauftraege.map((za) => ({
+      id: za.id,
+      objektId: za.objekt_id,
+      abrechnungsart: za.abrechnungsart,
+      festbetragCent: za.festbetrag_cent,
+      erledigt: za.erledigt,
+    })),
     zeiteintraege: zeiteintraege.map((z) => ({
       id: z.id,
       mitarbeiterId: z.mitarbeiter_id,
       art: z.art,
       objektId: z.objekt_id,
       taetigkeitId: z.taetigkeit_id,
-      zusatzauftragId: null,
+      zusatzauftragId: z.zusatzauftrag_id,
       beginn: z.beginn,
       ende: z.ende,
     })),
@@ -122,38 +149,87 @@ export async function ladeRechnungsvorbereitung(
     namen: {
       objekte: new Map(objekte.data.map((o) => [o.id, o.bezeichnung])),
       taetigkeiten: new Map(taetigkeiten.data.map((t) => [t.id, t.name])),
+      zusatzauftraege: new Map(zusatzauftraege.map((za) => [za.id, za.beschreibung])),
     },
     rundungsregel,
     nichtFreigegeben,
   };
 }
 
+// Die noch nicht abgerechneten Zusatzaufträge der Objekte. Abgerechnet
+// werden nur solche mit Festbetrag; die nach Stunden bleiben, solange es
+// Zeit für sie gibt.
+async function ladeNichtAbgerechneteZusatzauftraege(
+  supabase: SupabaseClient,
+  objektIds: string[],
+): Promise<ZusatzauftragZeile[]> {
+  if (objektIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from("zusatzauftrag")
+    .select("id, objekt_id, beschreibung, abrechnungsart, festbetrag_cent, erledigt")
+    .in("objekt_id", objektIds)
+    .is("abgerechnet_in", null)
+    .order("angelegt_am")
+    .order("id")
+    .returns<ZusatzauftragZeile[]>();
+  if (error) throw error;
+  return data;
+}
+
 // Die freigegebenen, noch nicht abgerechneten Zeiteinträge in den
 // Objekten, die im Zeitraum beginnen. Frühere bleiben auf Wunsch des Büros
 // draußen: Ein spät freigegebener Eintrag erscheint, wenn das Büro seinen
-// Zeitraum noch einmal aufruft.
+// Zeitraum noch einmal aufruft. Dazu kommt die Zeit für erledigte
+// Zusatzaufträge mit Festbetrag aus allen Monaten, denn sie wird mit dem
+// Festbetrag abgerechnet.
 async function ladeAbrechenbareZeiteintraege(
   supabase: SupabaseClient,
   objektIds: string[],
   zeitraum: GewaehlterZeitraum,
+  erledigteFestbetraege: string[],
 ): Promise<ZeiteintragZeile[]> {
   if (objektIds.length === 0) return [];
-  const alle: ZeiteintragZeile[] = [];
-  for (let ab = 0; ; ab += SEITE) {
-    const { data, error } = await supabase
+  const abrechenbar = () =>
+    supabase
       .from("zeiteintrag")
-      .select("id, mitarbeiter_id, art, objekt_id, taetigkeit_id, beginn, ende")
-      .in("objekt_id", objektIds)
+      .select(ZEITEINTRAG_SPALTEN)
       .not("freigegeben_am", "is", null)
-      .is("abgerechnet_in", null)
-      .gte("beginn", zeitraum.ab)
-      .lt("beginn", zeitraum.bisVor)
-      .order("id")
-      .range(ab, ab + SEITE - 1)
-      .returns<ZeiteintragZeile[]>();
+      .is("abgerechnet_in", null);
+  const [imZeitraum, fuerFestbetraege] = await Promise.all([
+    alleSeiten((ab, bis) =>
+      abrechenbar()
+        .in("objekt_id", objektIds)
+        .gte("beginn", zeitraum.ab)
+        .lt("beginn", zeitraum.bisVor)
+        .order("id")
+        .range(ab, bis)
+        .returns<ZeiteintragZeile[]>(),
+    ),
+    erledigteFestbetraege.length === 0
+      ? []
+      : alleSeiten((ab, bis) =>
+          abrechenbar()
+            .in("zusatzauftrag_id", erledigteFestbetraege)
+            .order("id")
+            .range(ab, bis)
+            .returns<ZeiteintragZeile[]>(),
+        ),
+  ]);
+  const schonDabei = new Set(imZeitraum.map((z) => z.id));
+  return [...imZeitraum, ...fuerFestbetraege.filter((z) => !schonDabei.has(z.id))];
+}
+
+// Lädt Seite für Seite, bis eine nicht mehr voll ist.
+async function alleSeiten<T>(
+  seite: (ab: number, bis: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
+): Promise<T[]> {
+  const alle: T[] = [];
+  for (let ab = 0; ; ab += SEITE) {
+    const { data, error } = await seite(ab, ab + SEITE - 1);
     if (error) throw error;
-    alle.push(...data);
-    if (data.length < SEITE) return alle;
+    const zeilen = data ?? [];
+    alle.push(...zeilen);
+    if (zeilen.length < SEITE) return alle;
   }
 }
 

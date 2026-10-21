@@ -6,13 +6,16 @@ export type Zusatzauftrag = ZusatzauftragDaten & {
   id: string;
   objekt_id: string;
   erledigt: boolean;
+  // Die gültige Abrechnung, die den Festbetrag umfasst; solange gesperrt.
+  abgerechnet_in: string | null;
 };
 
 export type ZusatzauftragMitObjekt = Zusatzauftrag & {
   objekt: { bezeichnung: string; archiviert: boolean };
 };
 
-const SPALTEN = "id, objekt_id, beschreibung, abrechnungsart, festbetrag_cent, erledigt";
+const SPALTEN =
+  "id, objekt_id, beschreibung, abrechnungsart, festbetrag_cent, erledigt, abgerechnet_in";
 
 // Alle Zusatzaufträge eines Objekts, die offenen zuerst. Welche der Nutzer
 // sehen darf, entscheiden die Zugriffsregeln der Datenbank (nur das Büro

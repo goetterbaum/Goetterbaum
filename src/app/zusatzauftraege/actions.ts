@@ -43,6 +43,7 @@ export async function zusatzauftragSpeichern(
   const { supabase } = await alsBuero();
   const bestand = await ladeZusatzauftrag(supabase, id);
   if (!bestand) return FEHLER(texte.zusatzauftraege.nichtGefunden);
+  if (bestand.abgerechnet_in) return FEHLER(texte.zusatzauftraege.abgerechnetHinweis);
 
   const eingabe = pruefeZusatzauftragEingabe(formData);
   if (!eingabe.ok) return FEHLER(eingabe.fehler);
@@ -63,6 +64,7 @@ export async function zusatzauftragErledigen(id: string, erledigt: boolean): Pro
   const { supabase } = await alsBuero();
   const bestand = await ladeZusatzauftrag(supabase, id);
   if (!bestand) return FEHLER(texte.zusatzauftraege.nichtGefunden);
+  if (bestand.abgerechnet_in) return FEHLER(texte.zusatzauftraege.abgerechnetHinweis);
 
   const { error } = await supabase.from("zusatzauftrag").update({ erledigt }).eq("id", id);
   if (error) {

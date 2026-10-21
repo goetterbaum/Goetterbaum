@@ -8,6 +8,8 @@ import { monatAlsText } from "./zeitraum";
 export type Zeile = {
   position: string;
   objekt: string;
+  // Die Beschreibung, nur bei Zusatzaufträgen.
+  zusatzauftrag: string;
   // Leer bei Pauschalen und Festbeträgen.
   taetigkeit: string;
   // Nur bei Pauschalen.
@@ -24,6 +26,7 @@ export type Zeilen = { zeilen: Zeile[]; summeCent: number };
 export type Namen = {
   objekte: Map<string, string>;
   taetigkeiten: Map<string, string>;
+  zusatzauftraege: Map<string, string>;
 };
 
 export function rechnungsZeilen(ergebnis: Rechnungsvorbereitung, namen: Namen): Zeilen {
@@ -34,6 +37,7 @@ export function rechnungsZeilen(ergebnis: Rechnungsvorbereitung, namen: Namen): 
     const gemeinsam = {
       position: t.positionen[p.art],
       objekt: name(namen.objekte, p.objektId),
+      zusatzauftrag: "zusatzauftragId" in p ? name(namen.zusatzauftraege, p.zusatzauftragId) : "",
       betragCent: p.betragCent,
     };
     switch (p.art) {

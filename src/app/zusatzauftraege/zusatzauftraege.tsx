@@ -20,6 +20,14 @@ export function zusatzauftragAbrechnungAlsText(
   return texte.zusatzauftragAbrechnungsarten[zusatzauftrag.abrechnungsart];
 }
 
+export function zusatzauftragStatus(
+  zusatzauftrag: Pick<Zusatzauftrag, "erledigt" | "abgerechnet_in">,
+): string {
+  const t = texte.zusatzauftraege;
+  if (zusatzauftrag.abgerechnet_in) return t.erledigtUndAbgerechnet;
+  return zusatzauftrag.erledigt ? t.erledigt : t.offen;
+}
+
 // Die Zusatzaufträge eines Objekts mit Abrechnung und Status, darunter das
 // Formular für einen neuen (nicht bei archivierten Objekten).
 export async function Zusatzauftraege({
@@ -53,7 +61,7 @@ export async function Zusatzauftraege({
               <tr key={z.id}>
                 <td>{z.beschreibung}</td>
                 <td>{zusatzauftragAbrechnungAlsText(z)}</td>
-                <td>{z.erledigt ? t.erledigt : t.offen}</td>
+                <td>{zusatzauftragStatus(z)}</td>
                 <td>
                   <Link
                     href={`/zusatzauftraege/${z.id}`}

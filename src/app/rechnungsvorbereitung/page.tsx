@@ -126,6 +126,7 @@ function Ergebnis({ geladen }: { geladen: RechnungsvorbereitungAusAdresse }) {
               <tr>
                 <th>{t.spaltePosition}</th>
                 <th>{t.spalteObjekt}</th>
+                <th>{t.spalteZusatzauftrag}</th>
                 <th>{t.spalteTaetigkeit}</th>
                 <th>{t.spalteMonat}</th>
                 <th>{t.spalteStunden}</th>
@@ -138,6 +139,7 @@ function Ergebnis({ geladen }: { geladen: RechnungsvorbereitungAusAdresse }) {
                 <tr key={i}>
                   <td>{z.position}</td>
                   <td>{z.objekt}</td>
+                  <td>{z.zusatzauftrag}</td>
                   <td>{z.taetigkeit}</td>
                   <td>{z.monat}</td>
                   <td>{z.minuten === null ? "" : t.stunden(stundenAlsText(z.minuten))}</td>
@@ -148,7 +150,7 @@ function Ergebnis({ geladen }: { geladen: RechnungsvorbereitungAusAdresse }) {
             </tbody>
             <tfoot>
               <tr>
-                <th colSpan={6}>{t.summe}</th>
+                <th colSpan={7}>{t.summe}</th>
                 <td>{euroAlsText(summeCent)}</td>
               </tr>
             </tfoot>

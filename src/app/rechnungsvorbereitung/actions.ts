@@ -40,6 +40,7 @@ export async function alsAbgerechnetMarkieren(
     monate: umfang.pauschalMonate,
     aufstellung: umfang.positionen,
     summe: umfang.summeCent,
+    zusatzauftraege: umfang.zusatzauftragIds,
   });
   refresh();
   if (error) {
@@ -49,9 +50,9 @@ export async function alsAbgerechnetMarkieren(
   return OK(t.markiert);
 }
 
-// Nimmt eine Abrechnung zurück. Ihre Zeiteinträge und Pauschal-Monate sind
-// danach wieder abrechenbar; jeder Zeiteintrag zeigt das im
-// Änderungsprotokoll.
+// Nimmt eine Abrechnung zurück. Ihre Zeiteinträge, Pauschal-Monate und
+// Festbeträge sind danach wieder abrechenbar; jeder Zeiteintrag zeigt das
+// im Änderungsprotokoll.
 export async function abrechnungZuruecknehmen(id: string): Promise<Rueckmeldung> {
   const t = texte.rechnungsvorbereitung;
   const { supabase } = await alsBuero();

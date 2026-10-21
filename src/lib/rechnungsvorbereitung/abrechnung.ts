@@ -10,6 +10,9 @@ export type AbrechnungsUmfang = {
   zeiteintragIds: string[];
   // Monat als erster Tag ("JJJJ-MM-01").
   pauschalMonate: { objekt_id: string; monat: string }[];
+  // Nur Zusatzaufträge mit Festbetrag; die Zeit nach Stunden steckt in den
+  // Zeiteinträgen.
+  zusatzauftragIds: string[];
   summeCent: number;
   positionen: Position[];
 };
@@ -21,6 +24,9 @@ export function abrechnungsUmfang(ergebnis: Rechnungsvorbereitung): AbrechnungsU
     zeiteintragIds: ergebnis.zeiteintragIds,
     pauschalMonate: ergebnis.positionen.flatMap((p) =>
       p.art === "pauschale" ? [{ objekt_id: p.objektId, monat: ersterTag(p.monat) }] : [],
+    ),
+    zusatzauftragIds: ergebnis.positionen.flatMap((p) =>
+      p.art === "zusatzauftrag-festbetrag" ? [p.zusatzauftragId] : [],
     ),
     summeCent: ergebnis.summeCent,
     positionen: ergebnis.positionen,
