@@ -1,6 +1,8 @@
 import { expect, test } from "vitest";
 import {
   rechnungsvorbereitung,
+  rechnungsvorbereitungFuerZusatzauftrag,
+  type EingabeFuerZusatzauftrag,
   type Eingabe,
   type Objekt,
   type Zeiteintrag,
@@ -566,4 +568,188 @@ test("Zeiteinträge mit unbekannter Tätigkeit werden weder berechnet noch als a
   expect(ergebnis.positionen).toEqual([]);
   expect(ergebnis.zeiteintragIds).toEqual([]);
   expect(ergebnis.stundennachweis).toEqual([]);
+});
+
+// Einzel-Abrechnung eines erledigten Zusatzauftrags (#45): nur er, mit
+// seiner Zeit aus allen Monaten.
+function einzeln(
+  zusatzauftrag: Partial<EingabeFuerZusatzauftrag["zusatzauftrag"]>,
+  zeiteintraege: Zeiteintrag[],
+): EingabeFuerZusatzauftrag {
+  return {
+    rundungsregel: "15-minuten",
+    zusatzauftrag: {
+      id: "sturmschaden",
+      objektId: "buero-haus",
+      abrechnungsart: "stunden",
+      festbetragCent: null,
+      erledigt: true,
+      ...zusatzauftrag,
+    },
+    taetigkeiten: [
+      { id: "reinigung", standardStundensatzCent: 3000, kundenStundensatzCent: null },
+      { id: "rasen", standardStundensatzCent: 4000, kundenStundensatzCent: 4500 },
+    ],
+    zeiteintraege,
+  };
+}
+
+test("Einzeln abgerechnet ergibt ein Zusatzauftrag nach Stunden seine Zeit aus allen Monaten je Tätigkeit", () => {
+  const fuerSturmschaden = { objektId: "buero-haus", zusatzauftragId: "sturmschaden" };
+  const ergebnis = rechnungsvorbereitungFuerZusatzauftrag(
+    einzeln({}, [
+      // 28.02., 23:20:12 bis 01.03., 00:41:37: je Tag gerundet, 40 + 45 Minuten
+      eintrag("2026-02-28T23:20:12+01:00", "2026-03-01T00:41:37+01:00", {
+        id: "februar",
+        ...fuerSturmschaden,
+      }),
+      eintrag("2026-04-02T08:58:09+02:00", "2026-04-02T10:01:33+02:00", {
+        id: "april",
+        taetigkeitId: "rasen",
+        mitarbeiterId: "bernd",
+        ...fuerSturmschaden,
+      }),
+    ]),
+  );
+  expect(ergebnis.positionen).toEqual([
+    {
+      art: "zusatzauftrag-stunden",
+      zusatzauftragId: "sturmschaden",
+      objektId: "buero-haus",
+      taetigkeitId: "reinigung",
+      minuten: 90,
+      stundensatzCent: 3000,
+      betragCent: 4500,
+    },
+    {
+      art: "zusatzauftrag-stunden",
+      zusatzauftragId: "sturmschaden",
+      objektId: "buero-haus",
+      taetigkeitId: "rasen",
+      minuten: 75,
+      stundensatzCent: 4500,
+      betragCent: 5625,
+    },
+  ]);
+  expect(ergebnis.summeCent).toBe(10125);
+  expect(ergebnis.zeiteintragIds).toEqual(["februar", "april"]);
+  expect(ergebnis.stundennachweis).toEqual([
+    {
+      datum: "2026-02-28",
+      objektId: "buero-haus",
+      taetigkeitId: "reinigung",
+      zusatzauftragId: "sturmschaden",
+      minuten: 45,
+      personen: 1,
+    },
+    {
+      datum: "2026-03-01",
+      objektId: "buero-haus",
+      taetigkeitId: "reinigung",
+      zusatzauftragId: "sturmschaden",
+      minuten: 45,
+      personen: 1,
+    },
+    {
+      datum: "2026-04-02",
+      objektId: "buero-haus",
+      taetigkeitId: "rasen",
+      zusatzauftragId: "sturmschaden",
+      minuten: 75,
+      personen: 1,
+    },
+  ]);
+});
+
+test("Einzeln abgerechnet ergibt ein Festbetrag nur seinen Betrag und umfasst seine Zeit", () => {
+  const ergebnis = rechnungsvorbereitungFuerZusatzauftrag(
+    einzeln(
+      {
+        id: "grundreinigung",
+        objektId: "villa",
+        abrechnungsart: "festbetrag",
+        festbetragCent: 89000,
+      },
+      [
+        eintrag("2026-02-23T08:03:41+01:00", "2026-02-23T12:47:12+01:00", {
+          id: "tag1",
+          zusatzauftragId: "grundreinigung",
+        }),
+        eintrag("2026-03-11T08:00:51+01:00", "2026-03-11T10:31:20+01:00", {
+          id: "tag2",
+          zusatzauftragId: "grundreinigung",
+        }),
+      ],
+    ),
+  );
+  expect(ergebnis).toEqual({
+    positionen: [
+      {
+        art: "zusatzauftrag-festbetrag",
+        zusatzauftragId: "grundreinigung",
+        objektId: "villa",
+        betragCent: 89000,
+      },
+    ],
+    summeCent: 89000,
+    zeiteintragIds: ["tag1", "tag2"],
+    stundennachweis: [],
+  });
+});
+
+test("Ein noch offener Zusatzauftrag lässt sich nicht einzeln abrechnen", () => {
+  for (const abrechnungsart of [
+    { abrechnungsart: "stunden", festbetragCent: null },
+    { abrechnungsart: "festbetrag", festbetragCent: 89000 },
+  ] as const) {
+    const ergebnis = rechnungsvorbereitungFuerZusatzauftrag(
+      einzeln({ ...abrechnungsart, erledigt: false }, [
+        eintrag("2026-03-10T08:02:13+01:00", "2026-03-10T09:09:36+01:00", {
+          objektId: "buero-haus",
+          zusatzauftragId: "sturmschaden",
+        }),
+      ]),
+    );
+    expect(ergebnis, abrechnungsart.abrechnungsart).toEqual({
+      positionen: [],
+      summeCent: 0,
+      zeiteintragIds: [],
+      stundennachweis: [],
+    });
+  }
+});
+
+test("Einzeln abgerechnet wird nur die Zeit des Zusatzauftrags", () => {
+  const ergebnis = rechnungsvorbereitungFuerZusatzauftrag(
+    einzeln({}, [
+      eintrag("2026-03-10T08:00:00+01:00", "2026-03-10T09:00:00+01:00", {
+        id: "regulaer",
+        objektId: "buero-haus",
+      }),
+      eintrag("2026-03-10T09:00:00+01:00", "2026-03-10T10:00:00+01:00", {
+        id: "anderer",
+        objektId: "buero-haus",
+        zusatzauftragId: "keller",
+      }),
+      eintrag("2026-03-10T10:00:00+01:00", "2026-03-10T10:20:00+01:00", {
+        id: "fahrt",
+        art: "fahrt",
+        objektId: null,
+        taetigkeitId: null,
+      }),
+      eintrag("2026-03-10T10:20:00+01:00", "2026-03-10T11:00:00+01:00", {
+        id: "unbekannt",
+        objektId: "buero-haus",
+        taetigkeitId: "unbekannt",
+        zusatzauftragId: "sturmschaden",
+      }),
+      eintrag("2026-03-10T11:00:00+01:00", "2026-03-10T12:00:00+01:00", {
+        id: "sturm",
+        objektId: "buero-haus",
+        zusatzauftragId: "sturmschaden",
+      }),
+    ]),
+  );
+  expect(ergebnis.zeiteintragIds).toEqual(["sturm"]);
+  expect(ergebnis.positionen).toMatchObject([{ taetigkeitId: "reinigung", minuten: 60 }]);
 });

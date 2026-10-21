@@ -167,24 +167,11 @@ export function rechnungsvorbereitung(eingabe: Eingabe): Rechnungsvorbereitung {
         taetigkeitStelle(a.taetigkeitId) - taetigkeitStelle(b.taetigkeitId),
     );
 
-  // Die Stunden je Tätigkeit aus den Tagen, die zu einer Position gehören.
-  function stundenJeTaetigkeit(gehoertDazu: (tag: GerundeterTag) => boolean): Stunden[] {
-    return eingabe.taetigkeiten.flatMap((taetigkeit) => {
-      const minuten = berechneteTage
-        .filter((tag) => gehoertDazu(tag) && tag.taetigkeitId === taetigkeit.id)
-        .reduce((summe, tag) => summe + tag.minuten, 0);
-      if (minuten === 0) return [];
-      const stundensatzCent =
-        taetigkeit.kundenStundensatzCent ?? taetigkeit.standardStundensatzCent;
-      const betragCent = Math.round((minuten * stundensatzCent) / 60);
-      return [{ taetigkeitId: taetigkeit.id, minuten, stundensatzCent, betragCent }];
-    });
-  }
-
   for (const objekt of eingabe.objekte) {
-    const regulaer = (tag: GerundeterTag) =>
-      tag.objektId === objekt.id && tag.zusatzauftragId === null;
-    for (const stunden of stundenJeTaetigkeit(regulaer)) {
+    const regulaer = berechneteTage.filter(
+      (tag) => tag.objektId === objekt.id && tag.zusatzauftragId === null,
+    );
+    for (const stunden of stundenJeTaetigkeit(regulaer, eingabe.taetigkeiten)) {
       positionen.push({ art: "stunden", objektId: objekt.id, ...stunden });
     }
   }
@@ -197,8 +184,8 @@ export function rechnungsvorbereitung(eingabe: Eingabe): Rechnungsvorbereitung {
       positionen.push({ art: "zusatzauftrag-festbetrag", zusatzauftragId, objektId, betragCent });
       continue;
     }
-    const fuerAuftrag = (tag: GerundeterTag) => tag.zusatzauftragId === zusatzauftragId;
-    for (const stunden of stundenJeTaetigkeit(fuerAuftrag)) {
+    const fuerAuftrag = berechneteTage.filter((tag) => tag.zusatzauftragId === zusatzauftragId);
+    for (const stunden of stundenJeTaetigkeit(fuerAuftrag, eingabe.taetigkeiten)) {
       positionen.push({ art: "zusatzauftrag-stunden", zusatzauftragId, objektId, ...stunden });
     }
   }
@@ -210,6 +197,86 @@ export function rechnungsvorbereitung(eingabe: Eingabe): Rechnungsvorbereitung {
     zeiteintragIds: umfassteZeiteintraege.map((z) => z.id),
     stundennachweis: berechneteTage,
   };
+}
+
+export type EingabeFuerZusatzauftrag = {
+  // Die bereits aufgelöste Rundungsregel (Kunde oder Firmen-Standard).
+  rundungsregel: Rundungsregel;
+  zusatzauftrag: Zusatzauftrag;
+  // Alle Tätigkeiten, die in den Zeiteinträgen vorkommen (auch archivierte).
+  taetigkeiten: Taetigkeit[];
+  // Freigegebene, noch nicht abgerechnete Zeiteinträge des Zusatzauftrags
+  // aus allen Monaten.
+  zeiteintraege: Zeiteintrag[];
+};
+
+// Die Rechnungsvorbereitung für einen einzelnen Zusatzauftrag, den das
+// Büro sofort nach der Erledigung abrechnet, ohne das Ende des
+// Abrechnungszeitraums abzuwarten. Sie umfasst seine ganze noch offene
+// Zeit, egal aus welchem Monat; nach Stunden wird sie berechnet wie in der
+// regulären Rechnungsvorbereitung, beim Festbetrag gehört sie zu dessen
+// Betrag. Ein offener Zusatzauftrag ergibt nichts.
+export function rechnungsvorbereitungFuerZusatzauftrag(
+  eingabe: EingabeFuerZusatzauftrag,
+): Rechnungsvorbereitung {
+  const { zusatzauftrag, taetigkeiten } = eingabe;
+  const { id: zusatzauftragId, objektId } = zusatzauftrag;
+  if (!zusatzauftrag.erledigt) {
+    return { positionen: [], summeCent: 0, zeiteintragIds: [], stundennachweis: [] };
+  }
+  const taetigkeitStelle = (id: string) => taetigkeiten.findIndex((t) => t.id === id);
+
+  const umfassteZeiteintraege = eingabe.zeiteintraege.filter(
+    (z): z is ObjektEintrag =>
+      z.art === "taetigkeit" &&
+      z.zusatzauftragId === zusatzauftragId &&
+      z.objektId === objektId &&
+      z.taetigkeitId !== null &&
+      taetigkeitStelle(z.taetigkeitId) >= 0,
+  );
+  const zeiteintragIds = umfassteZeiteintraege.map((z) => z.id);
+
+  if (zusatzauftrag.abrechnungsart === "festbetrag") {
+    const betragCent = zusatzauftrag.festbetragCent ?? 0;
+    return {
+      positionen: [{ art: "zusatzauftrag-festbetrag", zusatzauftragId, objektId, betragCent }],
+      summeCent: betragCent,
+      zeiteintragIds,
+      stundennachweis: [],
+    };
+  }
+
+  const tage = gerundeteTage(umfassteZeiteintraege, eingabe.rundungsregel).sort(
+    (a, b) =>
+      a.datum.localeCompare(b.datum) ||
+      taetigkeitStelle(a.taetigkeitId) - taetigkeitStelle(b.taetigkeitId),
+  );
+  const positionen: Position[] = stundenJeTaetigkeit(tage, taetigkeiten).map((stunden) => ({
+    art: "zusatzauftrag-stunden",
+    zusatzauftragId,
+    objektId,
+    ...stunden,
+  }));
+  return {
+    positionen,
+    summeCent: positionen.reduce((summe, p) => summe + p.betragCent, 0),
+    zeiteintragIds,
+    stundennachweis: tage,
+  };
+}
+
+// Die Stunden je Tätigkeit aus den Tagen einer Position, in der
+// Reihenfolge der Tätigkeiten.
+function stundenJeTaetigkeit(tage: GerundeterTag[], taetigkeiten: Taetigkeit[]): Stunden[] {
+  return taetigkeiten.flatMap((taetigkeit) => {
+    const minuten = tage
+      .filter((tag) => tag.taetigkeitId === taetigkeit.id)
+      .reduce((summe, tag) => summe + tag.minuten, 0);
+    if (minuten === 0) return [];
+    const stundensatzCent = taetigkeit.kundenStundensatzCent ?? taetigkeit.standardStundensatzCent;
+    const betragCent = Math.round((minuten * stundensatzCent) / 60);
+    return [{ taetigkeitId: taetigkeit.id, minuten, stundensatzCent, betragCent }];
+  });
 }
 
 // Der Monat, der `anzahl` Monate nach `monat` liegt.

@@ -252,6 +252,7 @@ export const texte = {
     festbetrag: "Festbetrag in Euro",
     angelegt: "Zusatzauftrag angelegt.",
     alsErledigtMarkieren: "Als erledigt markieren",
+    einzelnAbrechnen: "Einzeln abrechnen",
     wiederOeffnen: "Wieder öffnen",
     erledigtHinweis:
       "Dieser Zusatzauftrag ist erledigt. Er steht beim Erfassen nicht mehr zur Auswahl.",
@@ -544,6 +545,25 @@ export const texte = {
     zurueckgenommen: "Abrechnung zurückgenommen.",
     fehlerZuruecknehmen:
       "Die Abrechnung wurde nicht zurückgenommen. Bitte lade die Seite neu und versuche es noch einmal.",
+    einzelnAbgerechnet: (zusatzauftrag: string) => `Zusatzauftrag einzeln: ${zusatzauftrag}`,
+    einzelnTitel: "Zusatzauftrag einzeln abrechnen",
+    einzelnHinweis:
+      "Ein erledigter Zusatzauftrag lässt sich sofort abrechnen, ohne das Ende des Abrechnungszeitraums abzuwarten. Dazu gehört seine ganze freigegebene, noch nicht abgerechnete Zeit, egal aus welchem Monat.",
+    einzelnNichtFreigegeben: (anzahl: number) =>
+      anzahl === 1
+        ? "Achtung: 1 Zeiteintrag dieses Zusatzauftrags ist noch nicht freigegeben. Er fehlt in der Rechnungsvorbereitung."
+        : `Achtung: ${anzahl} Zeiteinträge dieses Zusatzauftrags sind noch nicht freigegeben. Sie fehlen in der Rechnungsvorbereitung.`,
+    einzelnNichtErledigt:
+      "Dieser Zusatzauftrag ist noch offen. Einzeln abrechnen lässt er sich erst, wenn er als erledigt markiert ist.",
+    einzelnSchonAbgerechnet: "Dieser Zusatzauftrag ist schon abgerechnet.",
+    einzelnNichtsAbzurechnen:
+      "Für diesen Zusatzauftrag gibt es keine freigegebene, noch nicht abgerechnete Zeit.",
+    einzelnHinweisMarkieren:
+      "Nach dem Export als abgerechnet markieren: Die enthaltenen Zeiteinträge und ein Festbetrag sind danach für alle gesperrt und erscheinen in keiner weiteren Rechnungsvorbereitung, auch nicht in der regulären des Kunden.",
+    csvDateinameEinzeln: (kunde: string, zusatzauftrag: string) =>
+      `Rechnungsvorbereitung ${kunde} ${zusatzauftrag}.csv`,
+    zumZusatzauftrag: "Zum Zusatzauftrag",
+    zurRechnungsvorbereitung: "Zur Rechnungsvorbereitung",
   },
   abrechnung: {
     abgerechnet:

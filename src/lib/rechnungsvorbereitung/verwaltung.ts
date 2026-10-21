@@ -10,10 +10,13 @@ import type {
 } from "@/lib/abrechnung";
 import { ladeFirma } from "@/lib/firma/verwaltung";
 import { ladeKunde, type Kunde } from "@/lib/kunden/verwaltung";
+import { istId } from "@/lib/id";
 import {
   rechnungsvorbereitung,
+  rechnungsvorbereitungFuerZusatzauftrag,
   type Monat,
   type Rechnungsvorbereitung,
+  type Taetigkeit,
   type Zeiteintrag,
 } from "@/lib/rechnungsvorbereitung";
 import { ladeKundenStundensaetze } from "@/lib/stundensaetze/verwaltung";
@@ -55,12 +58,26 @@ type ZeiteintragZeile = {
   ende: string;
 };
 
+function zeiteintragFuerRechenbaustein(z: ZeiteintragZeile): Zeiteintrag {
+  return {
+    id: z.id,
+    mitarbeiterId: z.mitarbeiter_id,
+    art: z.art,
+    objektId: z.objekt_id,
+    taetigkeitId: z.taetigkeit_id,
+    zusatzauftragId: z.zusatzauftrag_id,
+    beginn: z.beginn,
+    ende: z.ende,
+  };
+}
+
 export type GeladeneRechnungsvorbereitung = {
   ergebnis: Rechnungsvorbereitung;
   namen: Namen;
   rundungsregel: Rundungsregel;
   // Noch nicht freigegebene Zeiteinträge des Kunden, die im Zeitraum
-  // beginnen; sie fehlen im Ergebnis.
+  // beginnen (beim einzelnen Zusatzauftrag: alle seine); sie fehlen im
+  // Ergebnis.
   nichtFreigegeben: number;
 };
 
@@ -77,23 +94,16 @@ export async function ladeRechnungsvorbereitung(
   zeitraum: GewaehlterZeitraum,
 ): Promise<GeladeneRechnungsvorbereitung> {
   const rundungsregel = kunde.rundungsregel ?? standardDerFirma;
-  const [objekte, taetigkeiten, kundenSaetze] = await Promise.all([
+  const [objekte, taetigkeiten] = await Promise.all([
     supabase
       .from("objekt")
       .select("id, bezeichnung, abrechnungsart, pauschale_cent, archiviert")
       .eq("kunde_id", kunde.id)
       .order("bezeichnung")
       .returns<ObjektZeile[]>(),
-    // Auch archivierte: Ihre Zeit wird noch abgerechnet.
-    supabase
-      .from("taetigkeit")
-      .select("id, name, standard_stundensatz_cent")
-      .order("name")
-      .returns<{ id: string; name: string; standard_stundensatz_cent: number }[]>(),
-    ladeKundenStundensaetze(supabase, kunde.id),
+    ladeTaetigkeiten(supabase, kunde.id),
   ]);
   if (objekte.error) throw objekte.error;
-  if (taetigkeiten.error) throw taetigkeiten.error;
 
   const objektIds = objekte.data.map((o) => o.id);
   const zusatzauftraege = await ladeNichtAbgerechneteZusatzauftraege(supabase, objektIds);
@@ -118,12 +128,7 @@ export async function ladeRechnungsvorbereitung(
         abrechnungsart: o.abrechnungsart,
         pauschaleCent: o.pauschale_cent,
       })),
-    taetigkeiten: taetigkeiten.data.map((t) => ({
-      id: t.id,
-      standardStundensatzCent: t.standard_stundensatz_cent,
-      kundenStundensatzCent:
-        kundenSaetze.find((s) => s.taetigkeit_id === t.id)?.stundensatz_cent ?? null,
-    })),
+    taetigkeiten: taetigkeiten.fuerRechenbaustein,
     zusatzauftraege: zusatzauftraege.map((za) => ({
       id: za.id,
       objektId: za.objekt_id,
@@ -131,16 +136,7 @@ export async function ladeRechnungsvorbereitung(
       festbetragCent: za.festbetrag_cent,
       erledigt: za.erledigt,
     })),
-    zeiteintraege: zeiteintraege.map((z) => ({
-      id: z.id,
-      mitarbeiterId: z.mitarbeiter_id,
-      art: z.art,
-      objektId: z.objekt_id,
-      taetigkeitId: z.taetigkeit_id,
-      zusatzauftragId: z.zusatzauftrag_id,
-      beginn: z.beginn,
-      ende: z.ende,
-    })),
+    zeiteintraege: zeiteintraege.map(zeiteintragFuerRechenbaustein),
     abgerechnetePauschalMonate,
   });
 
@@ -148,11 +144,136 @@ export async function ladeRechnungsvorbereitung(
     ergebnis,
     namen: {
       objekte: new Map(objekte.data.map((o) => [o.id, o.bezeichnung])),
-      taetigkeiten: new Map(taetigkeiten.data.map((t) => [t.id, t.name])),
+      taetigkeiten: taetigkeiten.namen,
       zusatzauftraege: new Map(zusatzauftraege.map((za) => [za.id, za.beschreibung])),
     },
     rundungsregel,
     nichtFreigegeben,
+  };
+}
+
+// Alle Tätigkeiten mit den Stundensätzen für den Kunden, auch archivierte:
+// Ihre Zeit wird noch abgerechnet.
+async function ladeTaetigkeiten(
+  supabase: SupabaseClient,
+  kundeId: string,
+): Promise<{ fuerRechenbaustein: Taetigkeit[]; namen: Map<string, string> }> {
+  const [taetigkeiten, kundenSaetze] = await Promise.all([
+    supabase
+      .from("taetigkeit")
+      .select("id, name, standard_stundensatz_cent")
+      .order("name")
+      .returns<{ id: string; name: string; standard_stundensatz_cent: number }[]>(),
+    ladeKundenStundensaetze(supabase, kundeId),
+  ]);
+  if (taetigkeiten.error) throw taetigkeiten.error;
+  return {
+    fuerRechenbaustein: taetigkeiten.data.map((t) => ({
+      id: t.id,
+      standardStundensatzCent: t.standard_stundensatz_cent,
+      kundenStundensatzCent:
+        kundenSaetze.find((s) => s.taetigkeit_id === t.id)?.stundensatz_cent ?? null,
+    })),
+    namen: new Map(taetigkeiten.data.map((t) => [t.id, t.name])),
+  };
+}
+
+type EinzelnerZusatzauftragZeile = ZusatzauftragZeile & {
+  abgerechnet_in: string | null;
+  objekt: { bezeichnung: string; kunde_id: string };
+};
+
+// Dazu Kunde und Zusatzauftrag. abgerechnetIn ist die gültige Abrechnung
+// eines Festbetrags, sonst null.
+export type RechnungsvorbereitungFuerZusatzauftrag = GeladeneRechnungsvorbereitung & {
+  kunde: Kunde;
+  zusatzauftrag: {
+    id: string;
+    beschreibung: string;
+    erledigt: boolean;
+    abgerechnetIn: string | null;
+  };
+};
+
+// Die Rechnungsvorbereitung für einen einzelnen Zusatzauftrag mit seiner
+// freigegebenen, noch offenen Zeit aus allen Monaten, oder null, wenn es
+// ihn nicht gibt. Seite, CSV-Export und Abrechnen laden über diese
+// Funktion, damit alle dieselben Positionen sehen.
+export async function ladeRechnungsvorbereitungFuerZusatzauftrag(
+  supabase: SupabaseClient,
+  firmaId: string,
+  zusatzauftragId: string,
+): Promise<RechnungsvorbereitungFuerZusatzauftrag | null> {
+  if (!istId(zusatzauftragId)) return null;
+  const { data: za, error } = await supabase
+    .from("zusatzauftrag")
+    .select(
+      "id, objekt_id, beschreibung, abrechnungsart, festbetrag_cent, erledigt, abgerechnet_in, objekt(bezeichnung, kunde_id)",
+    )
+    .eq("id", zusatzauftragId)
+    .maybeSingle<EinzelnerZusatzauftragZeile>();
+  if (error) throw error;
+  if (!za) return null;
+
+  const [kunde, firma, taetigkeiten, zeiteintraege, nichtFreigegeben] = await Promise.all([
+    ladeKunde(supabase, za.objekt.kunde_id),
+    ladeFirma(supabase, firmaId),
+    ladeTaetigkeiten(supabase, za.objekt.kunde_id),
+    alleSeiten((ab, bis) =>
+      supabase
+        .from("zeiteintrag")
+        .select(ZEITEINTRAG_SPALTEN)
+        .eq("zusatzauftrag_id", za.id)
+        .not("freigegeben_am", "is", null)
+        .is("abgerechnet_in", null)
+        .order("beginn")
+        .order("id")
+        .range(ab, bis)
+        .returns<ZeiteintragZeile[]>(),
+    ),
+    supabase
+      .from("zeiteintrag")
+      .select("id", { count: "exact", head: true })
+      .eq("zusatzauftrag_id", za.id)
+      .is("freigegeben_am", null)
+      .then(({ count, error }) => {
+        if (error) throw error;
+        return count ?? 0;
+      }),
+  ]);
+  if (!kunde) return null;
+  const rundungsregel = kunde.rundungsregel ?? firma.rundungsregel;
+
+  const ergebnis = rechnungsvorbereitungFuerZusatzauftrag({
+    rundungsregel,
+    zusatzauftrag: {
+      id: za.id,
+      objektId: za.objekt_id,
+      abrechnungsart: za.abrechnungsart,
+      festbetragCent: za.festbetrag_cent,
+      // Ein abgerechneter Festbetrag ist nicht noch einmal abrechenbar.
+      erledigt: za.erledigt && za.abgerechnet_in === null,
+    },
+    taetigkeiten: taetigkeiten.fuerRechenbaustein,
+    zeiteintraege: zeiteintraege.map(zeiteintragFuerRechenbaustein),
+  });
+
+  return {
+    ergebnis,
+    namen: {
+      objekte: new Map([[za.objekt_id, za.objekt.bezeichnung]]),
+      taetigkeiten: taetigkeiten.namen,
+      zusatzauftraege: new Map([[za.id, za.beschreibung]]),
+    },
+    rundungsregel,
+    nichtFreigegeben,
+    kunde,
+    zusatzauftrag: {
+      id: za.id,
+      beschreibung: za.beschreibung,
+      erledigt: za.erledigt,
+      abgerechnetIn: za.abgerechnet_in,
+    },
   };
 }
 
@@ -290,16 +411,28 @@ export async function ladeRechnungsvorbereitungAusAdresse(
 
 // Eine bisherige Abrechnung eines Kunden, wie die Datenbank-Funktion
 // abrechnungen_des_kunden sie liefert. erster_monat als "JJJJ-MM-01".
+// Entweder mit Zeitraum oder, bei der Einzel-Abrechnung, mit Zusatzauftrag.
 export type BisherigeAbrechnung = {
   id: string;
-  erster_monat: string;
-  abrechnungszeitraum: Abrechnungszeitraum;
   summe_cent: number;
   abgerechnet_am: string;
   abgerechnet_von_name: string;
   zurueckgenommen_am: string | null;
   zurueckgenommen_von_name: string | null;
-};
+} & (
+  | {
+      erster_monat: string;
+      abrechnungszeitraum: Abrechnungszeitraum;
+      zusatzauftrag_id: null;
+      zusatzauftrag_beschreibung: null;
+    }
+  | {
+      erster_monat: null;
+      abrechnungszeitraum: null;
+      zusatzauftrag_id: string;
+      zusatzauftrag_beschreibung: string;
+    }
+);
 
 // Alle Abrechnungen des Kunden, die neueste zuerst, auch zurückgenommene.
 export async function ladeAbrechnungen(
