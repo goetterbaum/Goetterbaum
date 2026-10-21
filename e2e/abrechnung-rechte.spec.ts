@@ -388,17 +388,20 @@ test("Abrechnungen sieht nur das Büro der eigenen Firma", async () => {
 
 // Ein Zusatzauftrag mit Festbetrag (890 €) im Objekt des Kunden mit je
 // einem freigegebenen Zeiteintrag im Februar und im März 2026. Erledigt
-// wird er erst danach, denn Zeit lässt sich nur offenen zuordnen.
+// wird er erst danach, denn Zeit lässt sich nur offenen zuordnen. Jedes
+// Mal ein eigener Mitarbeiter, denn dieselben Zeiten eines Mitarbeiters
+// dürfen sich nicht überschneiden.
 async function festbetragMitZeit(firmaId: string, kunde: Kunde, { erledigt = true } = {}) {
   const dienst = dienstZugang()!;
   const { taetigkeitId } = await legeTaetigkeitAn(dienst, firmaId);
+  const mitarbeiter = await legeEigenenZugangAn(firmaId);
   const { zusatzauftragId } = await legeZusatzauftragAn(dienst, firmaId, kunde.objektId, {
     festbetragCent: 89000,
   });
   const eintrag = (beginn: string, ende: string) =>
     legeZeiteintragAn(dienst, {
       firmaId,
-      mitarbeiterId: kunde.mitarbeiter.id,
+      mitarbeiterId: mitarbeiter.id,
       objektId: kunde.objektId,
       taetigkeitId,
       zusatzauftragId,

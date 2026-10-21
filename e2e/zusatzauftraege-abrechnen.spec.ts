@@ -148,7 +148,8 @@ test("Ein Zusatzauftrag nach Stunden im Pauschal-Objekt erscheint getrennt, wird
     .selectOption({ label: "Festbetrag" });
   await page.getByLabel("Festbetrag in Euro", { exact: true }).fill("890,00");
   await page.getByRole("button", { name: "Speichern" }).click();
-  await expect(page.getByRole("alert")).toHaveText(
+  // Next.js hat eine eigene, leere Ansage-Fläche mit derselben Rolle.
+  await expect(page.getByRole("alert").filter({ hasText: "Für diesen" })).toHaveText(
     "Für diesen Zusatzauftrag ist schon Zeit abgerechnet. Die Abrechnungsart lässt sich deshalb nicht mehr ändern.",
   );
   await page.reload();
