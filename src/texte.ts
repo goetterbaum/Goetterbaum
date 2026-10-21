@@ -384,6 +384,14 @@ export const texte = {
     spalteAenderung: "Änderung",
     aenderung: (feld: string, vorher: string, nachher: string) => `${feld}: ${vorher} → ${nachher}`,
     zurUebersicht: "Zurück zu den Zeiteinträgen",
+    zusatzauftrag: "Zusatzauftrag",
+    zusatzauftragErledigt: (beschreibung: string) => `${beschreibung} (erledigt)`,
+    keinOffenerZusatzauftrag: "Für dieses Objekt gibt es keinen offenen Zusatzauftrag.",
+    zusatzauftragSpeichern: "Zusatzauftrag speichern",
+    zusatzauftragSpeichernLaeuft: "Wird gespeichert …",
+    zusatzauftragGespeichert: "Zusatzauftrag gespeichert.",
+    fehlerZusatzauftragNichtGespeichert:
+      "Der Zusatzauftrag wurde nicht gespeichert. Bitte versuche es noch einmal.",
   },
   pruefliste: {
     titel: "Unvollständige Zeiteinträge",
@@ -439,6 +447,7 @@ export const texte = {
     art: "Art",
     objekt: "Objekt",
     taetigkeit: "Tätigkeit",
+    zusatzauftrag: "Zusatzauftrag",
     beginn: "Beginn",
     ende: "Ende",
     nachtrag: "Nachtrag",

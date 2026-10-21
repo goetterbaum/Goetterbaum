@@ -221,20 +221,22 @@ export async function ladeZeiteintragMitProtokoll(
   if (!eintrag.data) return null;
 
   const zeilen: ProtokollZeile[] = protokoll.data;
-  const ids = (spalte: "objekt_id" | "taetigkeit_id") => [
+  const ids = (spalte: "objekt_id" | "taetigkeit_id" | "zusatzauftrag_id") => [
     ...new Set(
       zeilen
         .flatMap((z) => [z.vorher?.[spalte], z.nachher[spalte]])
         .filter((wert): wert is string => typeof wert === "string"),
     ),
   ];
-  // Auch archivierte, damit alte Stände lesbar bleiben.
-  const [objekte, taetigkeiten] = await Promise.all([
+  // Auch archivierte bzw. erledigte, damit alte Stände lesbar bleiben.
+  const [objekte, taetigkeiten, zusatzauftraege] = await Promise.all([
     supabase.from("objekt").select("id, bezeichnung").in("id", ids("objekt_id")),
     supabase.from("taetigkeit").select("id, name").in("id", ids("taetigkeit_id")),
+    supabase.from("zusatzauftrag").select("id, beschreibung").in("id", ids("zusatzauftrag_id")),
   ]);
   if (objekte.error) throw objekte.error;
   if (taetigkeiten.error) throw taetigkeiten.error;
+  if (zusatzauftraege.error) throw zusatzauftraege.error;
 
   return {
     eintrag: eintrag.data,
@@ -243,6 +245,7 @@ export async function ladeZeiteintragMitProtokoll(
     protokoll: protokollAnzeigen(zeilen, {
       objekte: new Map(objekte.data.map((o) => [o.id, o.bezeichnung])),
       taetigkeiten: new Map(taetigkeiten.data.map((t) => [t.id, t.name])),
+      zusatzauftraege: new Map(zusatzauftraege.data.map((z) => [z.id, z.beschreibung])),
     }),
   };
 }
