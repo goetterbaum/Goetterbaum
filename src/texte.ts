@@ -491,7 +491,8 @@ export const texte = {
     anzeigen: "Anzeigen",
     keineKunden: "Noch keine Kunden angelegt.",
     kundeNichtGefunden: "Diesen Kunden gibt es nicht.",
-    ueberschrift: (kunde: string, zeitraum: string) => `${kunde}: ${zeitraum}`,
+    // Was abgerechnet wird: der Zeitraum oder ein einzelner Zusatzauftrag.
+    ueberschrift: (kunde: string, was: string) => `${kunde}: ${was}`,
     rundungsregel: (regel: string) => `Rundungsregel: ${regel}`,
     keinePositionen: "In diesem Zeitraum gibt es nichts abzurechnen.",
     warnungNichtFreigegeben: (anzahl: number) =>

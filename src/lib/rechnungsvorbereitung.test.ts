@@ -722,28 +722,28 @@ test("Ein noch offener Zusatzauftrag lässt sich nicht einzeln abrechnen", () =>
 test("Einzeln abgerechnet wird nur die Zeit des Zusatzauftrags", () => {
   const ergebnis = rechnungsvorbereitungFuerZusatzauftrag(
     einzeln({}, [
-      eintrag("2026-03-10T08:00:00+01:00", "2026-03-10T09:00:00+01:00", {
+      eintrag("2026-03-10T08:00:12+01:00", "2026-03-10T08:59:47+01:00", {
         id: "regulaer",
         objektId: "buero-haus",
       }),
-      eintrag("2026-03-10T09:00:00+01:00", "2026-03-10T10:00:00+01:00", {
+      eintrag("2026-03-10T09:00:31+01:00", "2026-03-10T09:58:04+01:00", {
         id: "anderer",
         objektId: "buero-haus",
         zusatzauftragId: "keller",
       }),
-      eintrag("2026-03-10T10:00:00+01:00", "2026-03-10T10:20:00+01:00", {
+      eintrag("2026-03-10T09:58:04+01:00", "2026-03-10T10:19:26+01:00", {
         id: "fahrt",
         art: "fahrt",
         objektId: null,
         taetigkeitId: null,
       }),
-      eintrag("2026-03-10T10:20:00+01:00", "2026-03-10T11:00:00+01:00", {
+      eintrag("2026-03-10T10:19:26+01:00", "2026-03-10T10:58:39+01:00", {
         id: "unbekannt",
         objektId: "buero-haus",
         taetigkeitId: "unbekannt",
         zusatzauftragId: "sturmschaden",
       }),
-      eintrag("2026-03-10T11:00:00+01:00", "2026-03-10T12:00:00+01:00", {
+      eintrag("2026-03-10T11:00:09+01:00", "2026-03-10T12:00:02+01:00", {
         id: "sturm",
         objektId: "buero-haus",
         zusatzauftragId: "sturmschaden",

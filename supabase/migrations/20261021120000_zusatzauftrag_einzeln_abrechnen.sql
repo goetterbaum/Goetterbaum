@@ -49,6 +49,9 @@ comment on column public.abrechnung.zusatzauftrag_id is
 
 create index abrechnung_zusatzauftrag_id_idx on public.abrechnung (zusatzauftrag_id);
 
+comment on table public.abrechnung is
+  'Eine als abgerechnet markierte Rechnungsvorbereitung eines Zeitraums oder eines einzelnen Zusatzauftrags. Schreiben nur über als_abgerechnet_markieren, zusatzauftrag_einzeln_abrechnen und abrechnung_zuruecknehmen.';
+
 -- Rechnet einen erledigten Zusatzauftrag einzeln ab und gibt die Kennung
 -- der neuen Abrechnung zurück. Positionen und Summe kommen aus dem
 -- Rechenbaustein der App; nachgerechnet wird hier nicht. Die Datenbank
