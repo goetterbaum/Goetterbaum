@@ -13,7 +13,9 @@ import {
 
 // Gestern in Berlin, damit der Eintrag sicher in der Vergangenheit liegt.
 const GESTERN = berlinerDatum(Date.now() - 24 * 60 * 60 * 1000);
-const gesternUm = (uhrzeit: string) => new Date(berlinerZeitpunkt(GESTERN, uhrzeit)).toISOString();
+// Ein Live-Zeitpunkt gestern, mit Sekunden.
+const gesternUm = (uhrzeit: string, sekunden: number) =>
+  new Date(berlinerZeitpunkt(GESTERN, uhrzeit) + sekunden * 1000).toISOString();
 
 function zusatzauftragAuswahl(page: Page) {
   return page.getByRole("combobox", { name: "Zusatzauftrag" });
@@ -49,8 +51,8 @@ test("Das Büro hängt einen freigegebenen Zeiteintrag beim Prüfen an einen and
     objektId,
     taetigkeitId: taetigkeit.taetigkeitId,
     zusatzauftragId: sturmschaden.zusatzauftragId,
-    beginn: gesternUm("07:04"),
-    ende: gesternUm("09:47"),
+    beginn: gesternUm("07:04", 31),
+    ende: gesternUm("09:47", 12),
   });
   await dienst
     .from("zeiteintrag")
