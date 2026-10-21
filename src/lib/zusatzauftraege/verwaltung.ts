@@ -50,3 +50,18 @@ export async function ladeZusatzauftrag(
   if (error) throw error;
   return data;
 }
+
+// Ob schon Zeit für den Zusatzauftrag abgerechnet ist. Dann bleibt seine
+// Abrechnungsart fest.
+export async function hatAbgerechneteZeit(
+  supabase: SupabaseClient,
+  zusatzauftragId: string,
+): Promise<boolean> {
+  const { count, error } = await supabase
+    .from("zeiteintrag")
+    .select("id", { count: "exact", head: true })
+    .eq("zusatzauftrag_id", zusatzauftragId)
+    .not("abgerechnet_in", "is", null);
+  if (error) throw error;
+  return (count ?? 0) > 0;
+}

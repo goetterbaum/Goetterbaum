@@ -17,6 +17,8 @@
 --   auch nicht der Dienstschlüssel (wie am Zeiteintrag, #16).
 -- * Ein abgerechneter Zusatzauftrag ändert sich nicht mehr, für niemanden,
 --   bis die Abrechnung zurückgenommen ist.
+-- * Ist schon Zeit eines Zusatzauftrags abgerechnet, lässt sich seine
+--   Abrechnungsart nicht mehr ändern, für niemanden.
 --
 -- als_abgerechnet_markieren bekommt die Liste der Zusatzaufträge als
 -- neuen, letzten Parameter. Er ist optional, damit die bisherige App bis
@@ -79,6 +81,40 @@ create trigger zusatzauftrag_abgerechnet_sperren
   execute function privat.zusatzauftrag_abgerechnet_sperren();
 
 revoke all on function privat.zusatzauftrag_abgerechnet_sperren() from public;
+
+-- Ist schon Zeit eines Zusatzauftrags abgerechnet, bleibt seine
+-- Abrechnungsart fest. Sonst würde z. B. ein nachträglicher Festbetrag die
+-- schon nach Stunden berechnete Zeit noch einmal bezahlen. "security
+-- definer", damit die Regel unabhängig davon greift, welche Zeiteinträge
+-- der Ändernde sehen darf; deshalb nur in der Firma des Zusatzauftrags.
+create function privat.zusatzauftrag_abrechnungsart_fest()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if exists (
+    select 1
+    from public.zeiteintrag z
+    where z.zusatzauftrag_id = new.id
+      and z.firma_id = new.firma_id
+      and z.abgerechnet_in is not null
+  ) then
+    raise exception 'Für diesen Zusatzauftrag ist schon Zeit abgerechnet; die Abrechnungsart bleibt.'
+      using errcode = 'check_violation';
+  end if;
+  return new;
+end
+$$;
+
+create trigger zusatzauftrag_abrechnungsart_fest
+  before update of abrechnungsart on public.zusatzauftrag
+  for each row
+  when (new.abrechnungsart is distinct from old.abrechnungsart)
+  execute function privat.zusatzauftrag_abrechnungsart_fest();
+
+revoke all on function privat.zusatzauftrag_abrechnungsart_fest() from public;
 
 -- ---------------------------------------------------------------------------
 -- Abrechnen

@@ -553,3 +553,73 @@ test("Abgerechnet wird nur ein erledigter Festbetrag des Kunden, einmal, und sei
   expect(nochmal.error?.code).toBe("23514");
   expect(await abrechnungenVon(kunde.kundeId)).toHaveLength(1);
 });
+
+test("Ist schon Zeit eines Zusatzauftrags abgerechnet, bleibt seine Abrechnungsart fest", async () => {
+  const { firmaA } = testdaten();
+  const kunde = await abrechenbarerKunde(firmaA.id);
+  const dienst = dienstZugang()!;
+  const alsBuero = await schnittstelleAls(await legeEigenenZugangAn(firmaA.id, "buero"));
+  const { taetigkeitId } = await legeTaetigkeitAn(dienst, firmaA.id);
+  const { zusatzauftragId } = await legeZusatzauftragAn(dienst, firmaA.id, kunde.objektId);
+  const maerz = await legeZeiteintragAn(dienst, {
+    firmaId: firmaA.id,
+    mitarbeiterId: kunde.mitarbeiter.id,
+    objektId: kunde.objektId,
+    taetigkeitId,
+    zusatzauftragId,
+    beginn: "2026-03-12T07:04:19Z",
+    ende: "2026-03-12T09:41:52Z",
+  });
+  const freigabe = await dienst
+    .from("zeiteintrag")
+    .update({ freigegeben_am: "2026-04-01T08:00:00Z" })
+    .eq("id", maerz);
+  if (freigabe.error) throw freigabe.error;
+
+  // Vor der Abrechnung lässt sich die Abrechnungsart noch ändern.
+  const zuFestbetrag = { abrechnungsart: "festbetrag", festbetrag_cent: 89000 };
+  const zuStunden = { abrechnungsart: "stunden", festbetrag_cent: null };
+  for (const aenderung of [zuFestbetrag, zuStunden]) {
+    const { error } = await alsBuero
+      .from("zusatzauftrag")
+      .update(aenderung)
+      .eq("id", zusatzauftragId);
+    expect(error, JSON.stringify(aenderung)).toBeNull();
+  }
+
+  const { data: id } = await markiere(alsBuero, kunde, {
+    eintraege: [...kunde.freigegebene, maerz],
+  });
+  expect(await abgerechnetIn([maerz])).toEqual([id]);
+
+  // Danach würde ein Festbetrag die schon berechneten Stunden noch einmal
+  // bezahlen. Auch der Dienstschlüssel stellt nicht um.
+  for (const [supabase, wer] of [
+    [alsBuero, "Büro"],
+    [dienst, "Dienstschlüssel"],
+  ] as const) {
+    const { error } = await supabase
+      .from("zusatzauftrag")
+      .update(zuFestbetrag)
+      .eq("id", zusatzauftragId);
+    expect(error?.code, wer).toBe("23514");
+  }
+  // Beschreibung und Status bleiben änderbar.
+  const geaendert = await alsBuero
+    .from("zusatzauftrag")
+    .update({ beschreibung: "Sturmschaden Dach", erledigt: true })
+    .eq("id", zusatzauftragId)
+    .select("abrechnungsart");
+  expect(geaendert.error).toBeNull();
+  expect(geaendert.data).toEqual([{ abrechnungsart: "stunden" }]);
+
+  // Nach der Rücknahme ist nichts mehr abgerechnet, und es geht wieder.
+  expect((await alsBuero.rpc("abrechnung_zuruecknehmen", { welche: id })).error).toBeNull();
+  const umgestellt = await alsBuero
+    .from("zusatzauftrag")
+    .update(zuFestbetrag)
+    .eq("id", zusatzauftragId)
+    .select("abrechnungsart");
+  expect(umgestellt.error).toBeNull();
+  expect(umgestellt.data).toEqual([{ abrechnungsart: "festbetrag" }]);
+});

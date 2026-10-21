@@ -140,6 +140,20 @@ test("Ein Zusatzauftrag nach Stunden im Pauschal-Objekt erscheint getrennt, wird
   await page.getByRole("button", { name: "Als abgerechnet markieren" }).click();
   await expect(page.getByText("In diesem Zeitraum gibt es nichts abzurechnen.")).toBeVisible();
 
+  // Die abgerechneten Stunden würde ein Festbetrag noch einmal bezahlen:
+  // Die Abrechnungsart bleibt, die Beschreibung lässt sich ändern.
+  await page.goto(`/zusatzauftraege/${sturmschaden.zusatzauftragId}`);
+  await page
+    .getByRole("combobox", { name: /^Abrechnung des Zusatzauftrags/ })
+    .selectOption({ label: "Festbetrag" });
+  await page.getByLabel("Festbetrag in Euro", { exact: true }).fill("890,00");
+  await page.getByRole("button", { name: "Speichern" }).click();
+  await expect(page.getByRole("alert")).toHaveText(
+    "Für diesen Zusatzauftrag ist schon Zeit abgerechnet. Die Abrechnungsart lässt sich deshalb nicht mehr ändern.",
+  );
+  await page.reload();
+  await expect(page.getByText("Nach Stunden")).toBeVisible();
+
   // Im April kommt nur die April-Zeit für den Zusatzauftrag.
   await rechnungsvorbereitung(page, k.kundeId, "2026-04");
   await expect(zeile(page)).toHaveCount(2);

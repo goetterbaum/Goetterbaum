@@ -263,6 +263,8 @@ export const texte = {
     fehlerAbrechnungsart: "Bitte wähle eine Abrechnungsart.",
     fehlerFestbetragFehlt: "Bitte gib den Festbetrag ein.",
     fehlerFestbetragUngueltig: "Der Festbetrag ist kein gültiger Betrag. Beispiel: 890,00",
+    fehlerAbrechnungsartFest:
+      "Für diesen Zusatzauftrag ist schon Zeit abgerechnet. Die Abrechnungsart lässt sich deshalb nicht mehr ändern.",
     fehlerFestbetragBeiStunden:
       "Bei Abrechnung nach Stunden gibt es keinen Festbetrag. Bitte lass das Feld leer.",
   },
