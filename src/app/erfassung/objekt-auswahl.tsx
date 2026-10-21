@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ObjektZurAuswahl } from "@/lib/zeiterfassung/verwaltung";
+import type { ObjektZurAuswahl, ZusatzauftragZurAuswahl } from "@/lib/zeiterfassung/verwaltung";
 import { texte } from "@/texte";
 import styles from "./erfassung.module.css";
 
@@ -99,6 +99,55 @@ export function TaetigkeitAuswahl({
         {taetigkeiten.map((t) => (
           <option key={t.id} value={t.id}>
             {t.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+// Freiwillig einen offenen Zusatzauftrag des gewählten Objekts wählen
+// (Feld "zusatzauftrag"; leer heißt reguläre Arbeit). Hat das Objekt
+// keinen, erscheint das Feld nicht. bisheriger ist beim Ändern der schon
+// zugeordnete Zusatzauftrag, falls er inzwischen erledigt ist: Er bleibt
+// wählbar, solange das Objekt gleich bleibt.
+export function ZusatzauftragAuswahl({
+  zusatzauftraege,
+  objektId,
+  zusatzauftragId,
+  bisheriger,
+  waehle,
+}: {
+  // Nur offene Zusatzaufträge, aller Objekte.
+  zusatzauftraege: ZusatzauftragZurAuswahl[];
+  objektId: string;
+  zusatzauftragId: string;
+  bisheriger?: { id: string; objekt_id: string } | null;
+  waehle: (id: string) => void;
+}) {
+  const passende = zusatzauftraege.filter((z) => z.objekt_id === objektId);
+  const bisherigerErledigt =
+    bisheriger && bisheriger.objekt_id === objektId && !passende.some((z) => z.id === bisheriger.id)
+      ? bisheriger
+      : null;
+  if (passende.length === 0 && !bisherigerErledigt) return null;
+
+  return (
+    <label>
+      {texte.erfassung.zusatzauftrag}
+      <select
+        name="zusatzauftrag"
+        value={zusatzauftragId}
+        onChange={(e) => waehle(e.target.value)}
+        className={styles.eingabe}
+      >
+        <option value="">{texte.erfassung.keinZusatzauftrag}</option>
+        {bisherigerErledigt && (
+          <option value={bisherigerErledigt.id}>{texte.erfassung.bisherigerZusatzauftrag}</option>
+        )}
+        {passende.map((z) => (
+          <option key={z.id} value={z.id}>
+            {z.beschreibung}
           </option>
         ))}
       </select>

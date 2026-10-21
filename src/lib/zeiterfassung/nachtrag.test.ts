@@ -9,6 +9,7 @@ function formular(werte: Record<string, string>) {
 
 const OBJEKT = "4f1c2b8e-1d2a-4c3b-9e8f-0a1b2c3d4e5f";
 const TAETIGKEIT = "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d";
+const ZUSATZAUFTRAG = "c3d2e1f0-7a6b-4c5d-9e8f-2b1a0c9d8e7f";
 // Freitag, 16.10.2026, 14:00 in Berlin (Sommerzeit).
 const JETZT = Date.parse("2026-10-16T12:00:00Z");
 
@@ -28,24 +29,42 @@ test("Eine nachgetragene Tätigkeit wird mit Berliner Uhrzeit übernommen", () =
       art: "taetigkeit",
       objekt_id: OBJEKT,
       taetigkeit_id: TAETIGKEIT,
+      zusatzauftrag_id: null,
       beginn: "2026-10-16T05:30:00.000Z",
       ende: "2026-10-16T07:45:00.000Z",
     },
   });
 });
 
-test("Eine nachgetragene Fahrt hat kein Objekt und keine Tätigkeit, auch wenn welche mitkommen", () => {
-  const fahrt = { ...TAETIGKEIT_AM_MORGEN, art: "fahrt", datum: "2026-01-15" };
+test("Eine nachgetragene Fahrt hat kein Objekt, keine Tätigkeit und keinen Zusatzauftrag, auch wenn welche mitkommen", () => {
+  const fahrt = {
+    ...TAETIGKEIT_AM_MORGEN,
+    zusatzauftrag: ZUSATZAUFTRAG,
+    art: "fahrt",
+    datum: "2026-01-15",
+  };
   expect(pruefeNachtragEingabe(formular(fahrt), JETZT)).toEqual({
     ok: true,
     daten: {
       art: "fahrt",
       objekt_id: null,
       taetigkeit_id: null,
+      zusatzauftrag_id: null,
       beginn: "2026-01-15T06:30:00.000Z",
       ende: "2026-01-15T08:45:00.000Z",
     },
   });
+});
+
+test("Eine nachgetragene Tätigkeit kann einen Zusatzauftrag mitnehmen", () => {
+  const ergebnis = pruefeNachtragEingabe(
+    formular({ ...TAETIGKEIT_AM_MORGEN, zusatzauftrag: ZUSATZAUFTRAG }),
+    JETZT,
+  );
+  expect(ergebnis.ok && ergebnis.daten.zusatzauftrag_id).toBe(ZUSATZAUFTRAG);
+  expect(
+    pruefeNachtragEingabe(formular({ ...TAETIGKEIT_AM_MORGEN, zusatzauftrag: "x" }), JETZT),
+  ).toEqual({ ok: false, fehler: "Bitte wähle einen Zusatzauftrag aus der Liste." });
 });
 
 test("Eine Tätigkeit braucht Objekt und Tätigkeit", () => {

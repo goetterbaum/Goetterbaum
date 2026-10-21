@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { AktionsKnopf } from "@/app/aktions-knopf";
 import { NurFuerBuero } from "@/app/nur-fuer-buero";
+import { Zusatzauftraege } from "@/app/zusatzauftraege/zusatzauftraege";
 import { ladeKundenliste } from "@/lib/kunden/verwaltung";
 import { ladeObjekt } from "@/lib/objekte/verwaltung";
 import { createClient } from "@/lib/supabase/server";
@@ -73,6 +74,8 @@ async function Bearbeiten({ id: idVersprechen }: { id: Promise<string> }) {
         knopf={objekt.archiviert ? texte.stammdaten.aktivieren : texte.stammdaten.archivieren}
         knopfLaeuft={texte.stammdaten.speichernLaeuft}
       />
+
+      <Zusatzauftraege supabase={supabase} objekt={objekt} />
 
       <ZurUebersicht />
     </>

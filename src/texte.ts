@@ -1,6 +1,11 @@
 // Alle Texte der Oberfläche an einer Stelle, damit später weitere
 // Sprachen ohne Umbau nachgerüstet werden können.
-import type { Abrechnungsart, Abrechnungszeitraum, Rundungsregel } from "@/lib/abrechnung";
+import type {
+  Abrechnungsart,
+  Abrechnungszeitraum,
+  Rundungsregel,
+  ZusatzauftragAbrechnungsart,
+} from "@/lib/abrechnung";
 import type { Rolle } from "@/lib/rollen";
 import type { Sparte } from "@/lib/sparte";
 
@@ -219,6 +224,45 @@ export const texte = {
     fehlerTaetigkeitArchiviert: "Diese Tätigkeit ist archiviert. Aktiviere sie zuerst wieder.",
     fehlerStundensatz: "Der Stundensatz ist kein gültiger Betrag. Beispiel: 32,50",
   },
+  zusatzauftraege: {
+    titel: "Zusatzaufträge",
+    hinweis:
+      "Arbeit in diesem Objekt, die abweichend abgerechnet wird, z. B. ein Sturmschaden. Offene Zusatzaufträge können beim Erfassen ausgewählt werden.",
+    keine: "Noch keine Zusatzaufträge angelegt.",
+    spalteBeschreibung: "Beschreibung",
+    spalteAbrechnung: "Abrechnung",
+    spalteStatus: "Status",
+    offen: "offen",
+    erledigt: "erledigt",
+    festbetragText: (betrag: string) => `Festbetrag ${betrag}`,
+    bearbeiten: "Bearbeiten",
+    bearbeitenVon: (beschreibung: string) => `Bearbeiten: ${beschreibung}`,
+    neuTitel: "Neuer Zusatzauftrag",
+    objektArchiviert:
+      "Das Objekt ist archiviert. Neue Zusatzaufträge gibt es erst nach dem Wiederaktivieren.",
+    titelBearbeiten: "Zusatzauftrag",
+    laedt: "Lädt …",
+    nichtGefunden: "Diesen Zusatzauftrag gibt es nicht.",
+    objekt: "Objekt",
+    zumObjekt: "Zurück zum Objekt",
+    beschreibung: "Beschreibung",
+    // Nicht nur „Abrechnungsart“: Auf der Objektseite steht auch die des Objekts.
+    abrechnungsart: "Abrechnung des Zusatzauftrags",
+    festbetrag: "Festbetrag in Euro",
+    angelegt: "Zusatzauftrag angelegt.",
+    alsErledigtMarkieren: "Als erledigt markieren",
+    wiederOeffnen: "Wieder öffnen",
+    erledigtHinweis:
+      "Dieser Zusatzauftrag ist erledigt. Er steht beim Erfassen nicht mehr zur Auswahl.",
+    offenHinweis:
+      "Erledigte Zusatzaufträge stehen beim Erfassen nicht mehr zur Auswahl. Gelöscht wird nichts.",
+    fehlerBeschreibung: "Bitte gib eine Beschreibung ein.",
+    fehlerAbrechnungsart: "Bitte wähle eine Abrechnungsart.",
+    fehlerFestbetragFehlt: "Bitte gib den Festbetrag ein.",
+    fehlerFestbetragUngueltig: "Der Festbetrag ist kein gültiger Betrag. Beispiel: 890,00",
+    fehlerFestbetragBeiStunden:
+      "Bei Abrechnung nach Stunden gibt es keinen Festbetrag. Bitte lass das Feld leer.",
+  },
   erfassung: {
     laeuftSeit: (seit: string) => `Läuft seit ${seit}`,
     fahrt: "Fahrt",
@@ -241,11 +285,16 @@ export const texte = {
     angelegtVon: (name: string) => `Angelegt von ${name}`,
     fehlerObjekt: "Bitte wähle ein Objekt.",
     fehlerTaetigkeit: "Bitte wähle eine Tätigkeit.",
+    zusatzauftrag: "Zusatzauftrag (falls vom Büro angelegt)",
+    keinZusatzauftrag: "Kein Zusatzauftrag",
+    bisherigerZusatzauftrag: "Bisheriger Zusatzauftrag (schon erledigt)",
+    zusatzauftragText: (beschreibung: string) => `Zusatzauftrag: ${beschreibung}`,
+    fehlerZusatzauftrag: "Bitte wähle einen Zusatzauftrag aus der Liste.",
     fehlerLaeuftSchon: "Es läuft schon ein Zeiteintrag. Stoppe ihn, bevor du einen neuen startest.",
     fehlerLaeuftNichtsOderUnvollstaendig:
       "Es läuft kein Zeiteintrag mehr, oder er läuft schon so lange, dass du das richtige Ende nachtragen musst.",
     fehlerNichtZurAuswahl:
-      "Dieses Objekt oder diese Tätigkeit steht nicht mehr zur Auswahl. Bitte lade die Seite neu.",
+      "Dieses Objekt, diese Tätigkeit oder dieser Zusatzauftrag steht nicht mehr zur Auswahl. Bitte lade die Seite neu.",
     fehlerAbgemeldet: "Du bist nicht mehr angemeldet. Bitte melde dich neu an.",
     fehlerStart:
       "Der Start wurde nicht gespeichert. Bitte versuche es noch einmal oder trage die Zeit später als Nachtrag ein.",
@@ -513,6 +562,10 @@ export const texte = {
     pauschale: "Pauschale",
     stunden: "Stundenabrechnung",
   } satisfies Record<Abrechnungsart, string>,
+  zusatzauftragAbrechnungsarten: {
+    stunden: "Nach Stunden",
+    festbetrag: "Festbetrag",
+  } satisfies Record<ZusatzauftragAbrechnungsart, string>,
   adresse: {
     strasse: "Straße und Hausnummer",
     adresszusatz: "Adresszusatz (optional)",

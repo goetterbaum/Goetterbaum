@@ -12,9 +12,11 @@ import { pruefeEndeEingabe, pruefeNachtragEingabe } from "@/lib/zeiterfassung/na
 import { ladeZeiteintragZumAendern } from "@/lib/zeiterfassung/verwaltung";
 import { texte } from "@/texte";
 
-// Fehlercodes der Datenbank (siehe Migration zum Zeiteintrag): Es läuft
-// schon einer (eindeutig je Mitarbeiter), bzw. Objekt oder Tätigkeit sind
-// archiviert (Prüfregel) oder gehören nicht zur Firma (Fremdschlüssel).
+// Fehlercodes der Datenbank (siehe Migrationen zum Zeiteintrag und zu
+// Zusatzaufträgen): Es läuft schon einer (eindeutig je Mitarbeiter), bzw.
+// Objekt oder Tätigkeit sind archiviert oder der Zusatzauftrag ist
+// erledigt (Prüfregel), oder sie gehören nicht zur Firma bzw. der
+// Zusatzauftrag nicht zum Objekt (Fremdschlüssel).
 const LAEUFT_SCHON = "23505";
 const PRUEFREGEL_VERLETZT = "23514";
 const FREMDSCHLUESSEL_VERLETZT = "23503";

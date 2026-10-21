@@ -125,6 +125,7 @@ async function Aendern({
           art: eintrag.art,
           objekt_id: eintrag.objekt_id ?? "",
           taetigkeit_id: eintrag.taetigkeit_id ?? "",
+          zusatzauftrag_id: eintrag.zusatzauftrag_id ?? "",
           datum: berlinerDatum(beginn),
           von: berlinerUhrzeit(beginn),
           bis: berlinerUhrzeit(Date.parse(eintrag.ende)),
