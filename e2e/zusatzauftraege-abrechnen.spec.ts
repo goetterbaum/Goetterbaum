@@ -153,7 +153,9 @@ test("Ein Zusatzauftrag nach Stunden im Pauschal-Objekt erscheint getrennt, wird
     "Für diesen Zusatzauftrag ist schon Zeit abgerechnet. Die Abrechnungsart lässt sich deshalb nicht mehr ändern.",
   );
   await page.reload();
-  await expect(page.getByText("Nach Stunden")).toBeVisible();
+  await expect(page.getByRole("combobox", { name: /^Abrechnung des Zusatzauftrags/ })).toHaveValue(
+    "stunden",
+  );
 
   // Im April kommt nur die April-Zeit für den Zusatzauftrag.
   await rechnungsvorbereitung(page, k.kundeId, "2026-04");
