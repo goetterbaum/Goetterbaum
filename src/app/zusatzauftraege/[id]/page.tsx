@@ -3,12 +3,12 @@ import { Suspense } from "react";
 import { AktionsKnopf } from "@/app/aktions-knopf";
 import { NurFuerBuero } from "@/app/nur-fuer-buero";
 import { createClient } from "@/lib/supabase/server";
-import { ladeZusatzauftrag } from "@/lib/zusatzauftraege/verwaltung";
+import { ladeZusatzauftrag, type Zusatzauftrag } from "@/lib/zusatzauftraege/verwaltung";
 import { texte } from "@/texte";
 import styles from "../../page.module.css";
 import { zusatzauftragErledigen, zusatzauftragSpeichern } from "../actions";
 import { ZusatzauftragFormular } from "../zusatzauftrag-formular";
-import { zusatzauftragAbrechnungAlsText } from "../zusatzauftraege";
+import { zusatzauftragAbrechnungAlsText, zusatzauftragStatus } from "../zusatzauftraege";
 
 export default function ZusatzauftragBearbeiten({ params }: PageProps<"/zusatzauftraege/[id]">) {
   return (
@@ -48,8 +48,26 @@ async function Bearbeiten({ id: idVersprechen }: { id: Promise<string> }) {
         {" · "}
         {zusatzauftragAbrechnungAlsText(zusatzauftrag)}
         {" · "}
-        {zusatzauftrag.erledigt ? t.erledigt : t.offen}
+        {zusatzauftragStatus(zusatzauftrag)}
       </p>
+      {zusatzauftrag.abgerechnet_in ? (
+        <p>{t.abgerechnetHinweis}</p>
+      ) : (
+        <Aendern zusatzauftrag={zusatzauftrag} />
+      )}
+
+      <p>
+        <Link href={`/objekte/${zusatzauftrag.objekt_id}`}>{t.zumObjekt}</Link>
+      </p>
+    </>
+  );
+}
+
+// Bearbeiten und erledigen, solange der Zusatzauftrag nicht abgerechnet ist.
+function Aendern({ zusatzauftrag }: { zusatzauftrag: Zusatzauftrag }) {
+  const t = texte.zusatzauftraege;
+  return (
+    <>
       {zusatzauftrag.erledigt && <p>{t.erledigtHinweis}</p>}
 
       <ZusatzauftragFormular
@@ -68,10 +86,6 @@ async function Bearbeiten({ id: idVersprechen }: { id: Promise<string> }) {
         knopf={zusatzauftrag.erledigt ? t.wiederOeffnen : t.alsErledigtMarkieren}
         knopfLaeuft={texte.stammdaten.speichernLaeuft}
       />
-
-      <p>
-        <Link href={`/objekte/${zusatzauftrag.objekt_id}`}>{t.zumObjekt}</Link>
-      </p>
     </>
   );
 }

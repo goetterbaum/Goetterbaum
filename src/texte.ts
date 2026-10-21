@@ -234,6 +234,7 @@ export const texte = {
     spalteStatus: "Status",
     offen: "offen",
     erledigt: "erledigt",
+    erledigtUndAbgerechnet: "erledigt und abgerechnet",
     festbetragText: (betrag: string) => `Festbetrag ${betrag}`,
     bearbeiten: "Bearbeiten",
     bearbeitenVon: (beschreibung: string) => `Bearbeiten: ${beschreibung}`,
@@ -254,12 +255,16 @@ export const texte = {
     wiederOeffnen: "Wieder öffnen",
     erledigtHinweis:
       "Dieser Zusatzauftrag ist erledigt. Er steht beim Erfassen nicht mehr zur Auswahl.",
+    abgerechnetHinweis:
+      "Dieser Zusatzauftrag ist abgerechnet und kann nicht mehr geändert werden. Ist er falsch, muss das Büro zuerst die Abrechnung in der Rechnungsvorbereitung zurücknehmen.",
     offenHinweis:
       "Erledigte Zusatzaufträge stehen beim Erfassen nicht mehr zur Auswahl. Gelöscht wird nichts.",
     fehlerBeschreibung: "Bitte gib eine Beschreibung ein.",
     fehlerAbrechnungsart: "Bitte wähle eine Abrechnungsart.",
     fehlerFestbetragFehlt: "Bitte gib den Festbetrag ein.",
     fehlerFestbetragUngueltig: "Der Festbetrag ist kein gültiger Betrag. Beispiel: 890,00",
+    fehlerAbrechnungsartFest:
+      "Für diesen Zusatzauftrag ist schon Zeit abgerechnet. Die Abrechnungsart lässt sich deshalb nicht mehr ändern.",
     fehlerFestbetragBeiStunden:
       "Bei Abrechnung nach Stunden gibt es keinen Festbetrag. Bitte lass das Feld leer.",
   },
@@ -495,6 +500,7 @@ export const texte = {
     zurFreigabe: "Zur Freigabe",
     spaltePosition: "Position",
     spalteObjekt: "Objekt",
+    spalteZusatzauftrag: "Zusatzauftrag",
     spalteTaetigkeit: "Tätigkeit",
     spalteMonat: "Monat",
     spalteStunden: "Stunden",
@@ -513,7 +519,7 @@ export const texte = {
     csvExport: "Als CSV-Datei herunterladen",
     csvDateiname: (kunde: string, monat: string) => `Rechnungsvorbereitung ${kunde} ${monat}.csv`,
     hinweisMarkieren:
-      "Nach dem Export als abgerechnet markieren: Die enthaltenen Zeiteinträge und Pauschal-Monate sind danach für alle gesperrt und erscheinen in keiner weiteren Rechnungsvorbereitung.",
+      "Nach dem Export als abgerechnet markieren: Die enthaltenen Zeiteinträge, Pauschal-Monate und Zusatzaufträge mit Festbetrag sind danach für alle gesperrt und erscheinen in keiner weiteren Rechnungsvorbereitung.",
     alsAbgerechnetMarkieren: "Als abgerechnet markieren",
     markierenLaeuft: "Wird markiert …",
     markiert: "Als abgerechnet markiert.",
@@ -531,7 +537,7 @@ export const texte = {
     zurueckgenommenAmVon: (wann: string, wer: string) => `zurückgenommen am ${wann} von ${wer}`,
     zuruecknehmen: "Zurücknehmen",
     rueckfrage:
-      "Abrechnung wirklich zurücknehmen? Ihre Zeiteinträge und Pauschal-Monate sind danach wieder änderbar und abrechenbar. Eine schon geschriebene Rechnung musst du selbst stornieren.",
+      "Abrechnung wirklich zurücknehmen? Ihre Zeiteinträge, Pauschal-Monate und Zusatzaufträge mit Festbetrag sind danach wieder änderbar und abrechenbar. Eine schon geschriebene Rechnung musst du selbst stornieren.",
     jaZuruecknehmen: "Ja, zurücknehmen",
     abbrechen: "Abbrechen",
     zuruecknehmenLaeuft: "Wird zurückgenommen …",

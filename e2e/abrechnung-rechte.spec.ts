@@ -7,13 +7,15 @@ import {
   legeKundeMitObjektAn,
   legeTaetigkeitAn,
   legeZeiteintragAn,
+  legeZusatzauftragAn,
 } from "./testumgebung/testdaten";
 
 // Diese Tests gehen an der App vorbei direkt auf die öffentliche
 // Supabase-Schnittstelle. Sie prüfen, dass nur das Büro der eigenen Firma
 // abrechnet und Abrechnungen zurücknimmt, dass die Datenbank Zeitpunkt und
 // Nutzer selbst setzt, dass abgerechnete Zeiteinträge für alle gesperrt
-// sind und dass nichts doppelt abgerechnet wird.
+// sind und dass nichts doppelt abgerechnet wird, auch kein Festbetrag eines
+// Zusatzauftrags.
 
 // Spielraum für Uhren, die zwischen Testrechner und Datenbank abweichen.
 const UHR_SPIELRAUM_MS = 2 * 60 * 1000;
@@ -61,10 +63,12 @@ function markiere(
     eintraege = kunde.freigegebene,
     monate = [{ objekt_id: kunde.objektId, monat: "2026-03-01" }],
     abMonat = "2026-03-01",
+    zusatzauftraege = [],
   }: {
     eintraege?: string[];
     monate?: { objekt_id: string; monat: string }[];
     abMonat?: string;
+    zusatzauftraege?: string[];
   } = {},
 ) {
   return supabase.rpc("als_abgerechnet_markieren", {
@@ -74,6 +78,7 @@ function markiere(
     monate,
     aufstellung: [{ art: "pauschale", objektId: kunde.objektId, monat: "2026-03" }],
     summe: 50000,
+    zusatzauftraege,
   });
 }
 
@@ -379,4 +384,245 @@ test("Abrechnungen sieht nur das Büro der eigenen Firma", async () => {
       zurueckgenommen_von_name: null,
     }),
   ]);
+});
+
+// Ein Zusatzauftrag mit Festbetrag (890 €) im Objekt des Kunden mit je
+// einem freigegebenen Zeiteintrag im Februar und im März 2026. Erledigt
+// wird er erst danach, denn Zeit lässt sich nur offenen zuordnen. Jedes
+// Mal ein eigener Mitarbeiter, denn dieselben Zeiten eines Mitarbeiters
+// dürfen sich nicht überschneiden.
+async function festbetragMitZeit(firmaId: string, kunde: Kunde, { erledigt = true } = {}) {
+  const dienst = dienstZugang()!;
+  const { taetigkeitId } = await legeTaetigkeitAn(dienst, firmaId);
+  const mitarbeiter = await legeEigenenZugangAn(firmaId);
+  const { zusatzauftragId } = await legeZusatzauftragAn(dienst, firmaId, kunde.objektId, {
+    festbetragCent: 89000,
+  });
+  const eintrag = (beginn: string, ende: string) =>
+    legeZeiteintragAn(dienst, {
+      firmaId,
+      mitarbeiterId: mitarbeiter.id,
+      objektId: kunde.objektId,
+      taetigkeitId,
+      zusatzauftragId,
+      beginn,
+      ende,
+    });
+  const februar = await eintrag("2026-02-23T07:03:41Z", "2026-02-23T11:47:12Z");
+  const maerz = await eintrag("2026-03-11T07:00:51Z", "2026-03-11T09:31:20Z");
+  const freigabe = await dienst
+    .from("zeiteintrag")
+    .update({ freigegeben_am: "2026-04-01T08:00:00Z" })
+    .in("id", [februar, maerz]);
+  if (freigabe.error) throw freigabe.error;
+  if (erledigt) {
+    const { error } = await dienst
+      .from("zusatzauftrag")
+      .update({ erledigt: true })
+      .eq("id", zusatzauftragId);
+    if (error) throw error;
+  }
+  return { zusatzauftragId, februar, maerz };
+}
+
+async function zusatzauftragAbgerechnetIn(id: string) {
+  const { data, error } = await dienstZugang()!
+    .from("zusatzauftrag")
+    .select("abgerechnet_in")
+    .eq("id", id)
+    .single<{ abgerechnet_in: string | null }>();
+  if (error) throw error;
+  return data.abgerechnet_in;
+}
+
+test("Ein erledigter Festbetrag wird mit seiner Zeit aus allen Monaten abgerechnet und ist danach für alle gesperrt", async () => {
+  const { firmaA } = testdaten();
+  const kunde = await abrechenbarerKunde(firmaA.id);
+  const festbetrag = await festbetragMitZeit(firmaA.id, kunde);
+  const alsBuero = await schnittstelleAls(await legeEigenenZugangAn(firmaA.id, "buero"));
+  const dienst = dienstZugang()!;
+
+  // An den Funktionen vorbei setzt niemand den Verweis, auch nicht der
+  // Dienstschlüssel, weder beim Ändern noch beim Anlegen.
+  const { data: andere } = await markiere(alsBuero, await abrechenbarerKunde(firmaA.id));
+  for (const [supabase, wer] of [
+    [alsBuero, "Büro"],
+    [dienst, "Dienstschlüssel"],
+  ] as const) {
+    const { error } = await supabase
+      .from("zusatzauftrag")
+      .update({ abgerechnet_in: andere })
+      .eq("id", festbetrag.zusatzauftragId);
+    expect(error?.code, wer).toBe("42501");
+  }
+  const angelegt = await dienst.from("zusatzauftrag").insert({
+    firma_id: firmaA.id,
+    objekt_id: kunde.objektId,
+    beschreibung: "Schon abgerechnet",
+    abrechnungsart: "festbetrag",
+    festbetrag_cent: 1000,
+    erledigt: true,
+    abgerechnet_in: andere,
+  });
+  expect(angelegt.error?.code).toBe("42501");
+  expect(await zusatzauftragAbgerechnetIn(festbetrag.zusatzauftragId)).toBeNull();
+
+  // Der Februar-Eintrag gehört zum Festbetrag und wird mit ihm abgerechnet,
+  // obwohl er vor dem Zeitraum liegt.
+  const { data: id, error } = await markiere(alsBuero, kunde, {
+    eintraege: [...kunde.freigegebene, festbetrag.februar, festbetrag.maerz],
+    zusatzauftraege: [festbetrag.zusatzauftragId],
+  });
+  expect(error).toBeNull();
+  expect(await zusatzauftragAbgerechnetIn(festbetrag.zusatzauftragId)).toBe(id);
+  expect(await abgerechnetIn([festbetrag.februar, festbetrag.maerz])).toEqual([id, id]);
+
+  // Gesperrt für Büro und Dienstschlüssel: weder Betrag noch Status.
+  for (const [supabase, wer] of [
+    [alsBuero, "Büro"],
+    [dienst, "Dienstschlüssel"],
+  ] as const) {
+    for (const aenderung of [{ festbetrag_cent: 50000 }, { erledigt: false }]) {
+      const { error } = await supabase
+        .from("zusatzauftrag")
+        .update(aenderung)
+        .eq("id", festbetrag.zusatzauftragId);
+      expect(error?.code, `${wer} ${JSON.stringify(aenderung)}`).toBe("23514");
+    }
+  }
+
+  // Nach der Rücknahme wieder änderbar und abrechenbar.
+  expect((await alsBuero.rpc("abrechnung_zuruecknehmen", { welche: id })).error).toBeNull();
+  expect(await zusatzauftragAbgerechnetIn(festbetrag.zusatzauftragId)).toBeNull();
+  expect(await abgerechnetIn([festbetrag.februar, festbetrag.maerz])).toEqual([null, null]);
+  const geaendert = await alsBuero
+    .from("zusatzauftrag")
+    .update({ beschreibung: "Grundreinigung nach Umbau" })
+    .eq("id", festbetrag.zusatzauftragId)
+    .select("id");
+  expect(geaendert.error).toBeNull();
+  expect(geaendert.data).toHaveLength(1);
+  const neu = await markiere(alsBuero, kunde, {
+    eintraege: [festbetrag.februar],
+    monate: [],
+    zusatzauftraege: [festbetrag.zusatzauftragId],
+  });
+  expect(neu.error).toBeNull();
+  expect(await zusatzauftragAbgerechnetIn(festbetrag.zusatzauftragId)).toBe(neu.data);
+});
+
+test("Abgerechnet wird nur ein erledigter Festbetrag des Kunden, einmal, und seine Zeit nie ohne ihn", async () => {
+  const { firmaA } = testdaten();
+  const kunde = await abrechenbarerKunde(firmaA.id);
+  const andererKunde = await abrechenbarerKunde(firmaA.id);
+  const festbetrag = await festbetragMitZeit(firmaA.id, kunde);
+  const offen = await festbetragMitZeit(firmaA.id, kunde, { erledigt: false });
+  const fremd = await festbetragMitZeit(firmaA.id, andererKunde);
+  const nachStunden = await legeZusatzauftragAn(dienstZugang()!, firmaA.id, kunde.objektId, {
+    erledigt: true,
+  });
+  const alsBuero = await schnittstelleAls(await legeEigenenZugangAn(firmaA.id, "buero"));
+
+  // Was nicht passt, lehnt die Datenbank ab und speichert nichts.
+  const falsch = [
+    { eintraege: [], zusatzauftraege: [offen.zusatzauftragId] },
+    { eintraege: [], zusatzauftraege: [nachStunden.zusatzauftragId] },
+    { eintraege: [], zusatzauftraege: [fremd.zusatzauftragId] },
+    // Die Zeit für den Festbetrag gehört zu ihm, auch die im Zeitraum.
+    { eintraege: [festbetrag.februar], zusatzauftraege: [] },
+    { eintraege: [festbetrag.maerz], zusatzauftraege: [] },
+    { eintraege: [offen.maerz], zusatzauftraege: [festbetrag.zusatzauftragId] },
+  ];
+  for (const auswahl of falsch) {
+    const { error } = await markiere(alsBuero, kunde, { monate: [], ...auswahl });
+    expect(error?.code, JSON.stringify(auswahl)).toBe("23514");
+  }
+  expect(await abrechnungenVon(kunde.kundeId)).toEqual([]);
+  expect(await zusatzauftragAbgerechnetIn(festbetrag.zusatzauftragId)).toBeNull();
+
+  // Ein Festbetrag allein genügt für eine Abrechnung, aber nur einmal.
+  const { data: id, error } = await markiere(alsBuero, kunde, {
+    eintraege: [],
+    monate: [],
+    zusatzauftraege: [festbetrag.zusatzauftragId],
+  });
+  expect(error).toBeNull();
+  expect(await zusatzauftragAbgerechnetIn(festbetrag.zusatzauftragId)).toBe(id);
+  const nochmal = await markiere(alsBuero, kunde, {
+    eintraege: [],
+    monate: [],
+    zusatzauftraege: [festbetrag.zusatzauftragId],
+  });
+  expect(nochmal.error?.code).toBe("23514");
+  expect(await abrechnungenVon(kunde.kundeId)).toHaveLength(1);
+});
+
+test("Ist schon Zeit eines Zusatzauftrags abgerechnet, bleibt seine Abrechnungsart fest", async () => {
+  const { firmaA } = testdaten();
+  const kunde = await abrechenbarerKunde(firmaA.id);
+  const dienst = dienstZugang()!;
+  const alsBuero = await schnittstelleAls(await legeEigenenZugangAn(firmaA.id, "buero"));
+  const { taetigkeitId } = await legeTaetigkeitAn(dienst, firmaA.id);
+  const { zusatzauftragId } = await legeZusatzauftragAn(dienst, firmaA.id, kunde.objektId);
+  const maerz = await legeZeiteintragAn(dienst, {
+    firmaId: firmaA.id,
+    mitarbeiterId: kunde.mitarbeiter.id,
+    objektId: kunde.objektId,
+    taetigkeitId,
+    zusatzauftragId,
+    beginn: "2026-03-12T07:04:19Z",
+    ende: "2026-03-12T09:41:52Z",
+  });
+  const freigabe = await dienst
+    .from("zeiteintrag")
+    .update({ freigegeben_am: "2026-04-01T08:00:00Z" })
+    .eq("id", maerz);
+  if (freigabe.error) throw freigabe.error;
+
+  // Vor der Abrechnung lässt sich die Abrechnungsart noch ändern.
+  const zuFestbetrag = { abrechnungsart: "festbetrag", festbetrag_cent: 89000 };
+  const zuStunden = { abrechnungsart: "stunden", festbetrag_cent: null };
+  for (const aenderung of [zuFestbetrag, zuStunden]) {
+    const { error } = await alsBuero
+      .from("zusatzauftrag")
+      .update(aenderung)
+      .eq("id", zusatzauftragId);
+    expect(error, JSON.stringify(aenderung)).toBeNull();
+  }
+
+  const { data: id } = await markiere(alsBuero, kunde, {
+    eintraege: [...kunde.freigegebene, maerz],
+  });
+  expect(await abgerechnetIn([maerz])).toEqual([id]);
+
+  // Danach würde ein Festbetrag die schon berechneten Stunden noch einmal
+  // bezahlen. Auch der Dienstschlüssel stellt nicht um.
+  for (const [supabase, wer] of [
+    [alsBuero, "Büro"],
+    [dienst, "Dienstschlüssel"],
+  ] as const) {
+    const { error } = await supabase
+      .from("zusatzauftrag")
+      .update(zuFestbetrag)
+      .eq("id", zusatzauftragId);
+    expect(error?.code, wer).toBe("23514");
+  }
+  // Beschreibung und Status bleiben änderbar.
+  const geaendert = await alsBuero
+    .from("zusatzauftrag")
+    .update({ beschreibung: "Sturmschaden Dach", erledigt: true })
+    .eq("id", zusatzauftragId)
+    .select("abrechnungsart");
+  expect(geaendert.error).toBeNull();
+  expect(geaendert.data).toEqual([{ abrechnungsart: "stunden" }]);
+
+  // Nach der Rücknahme ist nichts mehr abgerechnet, und es geht wieder.
+  expect((await alsBuero.rpc("abrechnung_zuruecknehmen", { welche: id })).error).toBeNull();
+  const umgestellt = await alsBuero
+    .from("zusatzauftrag")
+    .update(zuFestbetrag)
+    .eq("id", zusatzauftragId)
+    .select("abrechnungsart");
+  expect(umgestellt.error).toBeNull();
+  expect(umgestellt.data).toEqual([{ abrechnungsart: "festbetrag" }]);
 });

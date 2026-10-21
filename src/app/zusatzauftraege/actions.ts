@@ -5,7 +5,7 @@ import { alsBuero } from "@/lib/als-buero";
 import { ladeObjekt } from "@/lib/objekte/verwaltung";
 import { FEHLER, OK, type Rueckmeldung } from "@/lib/rueckmeldung";
 import { pruefeZusatzauftragEingabe } from "@/lib/zusatzauftraege/eingabe";
-import { ladeZusatzauftrag } from "@/lib/zusatzauftraege/verwaltung";
+import { hatAbgerechneteZeit, ladeZusatzauftrag } from "@/lib/zusatzauftraege/verwaltung";
 import { texte } from "@/texte";
 
 // Legt zu einem Objekt einen offenen Zusatzauftrag an. Archivierte Objekte
@@ -43,9 +43,17 @@ export async function zusatzauftragSpeichern(
   const { supabase } = await alsBuero();
   const bestand = await ladeZusatzauftrag(supabase, id);
   if (!bestand) return FEHLER(texte.zusatzauftraege.nichtGefunden);
+  if (bestand.abgerechnet_in) return FEHLER(texte.zusatzauftraege.abgerechnetHinweis);
 
   const eingabe = pruefeZusatzauftragEingabe(formData);
   if (!eingabe.ok) return FEHLER(eingabe.fehler);
+  // Die Datenbank lehnt das ohnehin ab; hier nur mit verständlicher Meldung.
+  if (
+    eingabe.daten.abrechnungsart !== bestand.abrechnungsart &&
+    (await hatAbgerechneteZeit(supabase, id))
+  ) {
+    return FEHLER(texte.zusatzauftraege.fehlerAbrechnungsartFest);
+  }
 
   const { error } = await supabase.from("zusatzauftrag").update(eingabe.daten).eq("id", id);
   if (error) {
@@ -63,6 +71,7 @@ export async function zusatzauftragErledigen(id: string, erledigt: boolean): Pro
   const { supabase } = await alsBuero();
   const bestand = await ladeZusatzauftrag(supabase, id);
   if (!bestand) return FEHLER(texte.zusatzauftraege.nichtGefunden);
+  if (bestand.abgerechnet_in) return FEHLER(texte.zusatzauftraege.abgerechnetHinweis);
 
   const { error } = await supabase.from("zusatzauftrag").update({ erledigt }).eq("id", id);
   if (error) {

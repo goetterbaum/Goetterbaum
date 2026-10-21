@@ -6,13 +6,16 @@ export type Zusatzauftrag = ZusatzauftragDaten & {
   id: string;
   objekt_id: string;
   erledigt: boolean;
+  // Die gültige Abrechnung, die den Festbetrag umfasst; solange gesperrt.
+  abgerechnet_in: string | null;
 };
 
 export type ZusatzauftragMitObjekt = Zusatzauftrag & {
   objekt: { bezeichnung: string; archiviert: boolean };
 };
 
-const SPALTEN = "id, objekt_id, beschreibung, abrechnungsart, festbetrag_cent, erledigt";
+const SPALTEN =
+  "id, objekt_id, beschreibung, abrechnungsart, festbetrag_cent, erledigt, abgerechnet_in";
 
 // Alle Zusatzaufträge eines Objekts, die offenen zuerst. Welche der Nutzer
 // sehen darf, entscheiden die Zugriffsregeln der Datenbank (nur das Büro
@@ -46,4 +49,19 @@ export async function ladeZusatzauftrag(
     .maybeSingle<ZusatzauftragMitObjekt>();
   if (error) throw error;
   return data;
+}
+
+// Ob schon Zeit für den Zusatzauftrag abgerechnet ist. Dann bleibt seine
+// Abrechnungsart fest.
+export async function hatAbgerechneteZeit(
+  supabase: SupabaseClient,
+  zusatzauftragId: string,
+): Promise<boolean> {
+  const { count, error } = await supabase
+    .from("zeiteintrag")
+    .select("id", { count: "exact", head: true })
+    .eq("zusatzauftrag_id", zusatzauftragId)
+    .not("abgerechnet_in", "is", null);
+  if (error) throw error;
+  return (count ?? 0) > 0;
 }

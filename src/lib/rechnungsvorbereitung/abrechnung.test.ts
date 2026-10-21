@@ -28,7 +28,7 @@ const ERGEBNIS: Rechnungsvorbereitung = {
   stundennachweis: [],
 };
 
-test("Eine Abrechnung umfasst die Zeiteinträge, die Pauschal-Monate und die Summe", () => {
+test("Eine Abrechnung umfasst die Zeiteinträge, die Pauschal-Monate, die Zusatzaufträge mit Festbetrag und die Summe", () => {
   expect(abrechnungsUmfang(ERGEBNIS)).toEqual({
     zeiteintragIds: [EINTRAG_2, EINTRAG_1],
     // Monate als erster Tag, wie die Datenbank sie speichert.
@@ -36,6 +36,7 @@ test("Eine Abrechnung umfasst die Zeiteinträge, die Pauschal-Monate und die Sum
       { objekt_id: HAUS_A, monat: "2026-02-01" },
       { objekt_id: HAUS_A, monat: "2026-03-01" },
     ],
+    zusatzauftragIds: [],
     summeCent: 106750,
     positionen: ERGEBNIS.positionen,
   });
@@ -63,4 +64,37 @@ test("Ein anderer Zeiteintrag oder ein anderer Betrag ändert den Stand", () => 
     summeCent: 107200,
   };
   expect(abrechnungsStand(andererSatz)).not.toBe(abrechnungsStand(ERGEBNIS));
+});
+
+test("Eine Abrechnung umfasst auch die Zusatzaufträge mit Festbetrag, nicht die nach Stunden", () => {
+  const STURMSCHADEN = "7c6d5e4f-0000-4000-8000-000000000001";
+  const KELLER = "7c6d5e4f-0000-4000-8000-000000000002";
+  const ergebnis: Rechnungsvorbereitung = {
+    positionen: [
+      {
+        art: "zusatzauftrag-stunden",
+        zusatzauftragId: KELLER,
+        objektId: HAUS_A,
+        taetigkeitId: REINIGUNG,
+        minuten: 60,
+        stundensatzCent: 3000,
+        betragCent: 3000,
+      },
+      {
+        art: "zusatzauftrag-festbetrag",
+        zusatzauftragId: STURMSCHADEN,
+        objektId: HAUS_B,
+        betragCent: 89000,
+      },
+    ],
+    summeCent: 92000,
+    zeiteintragIds: [EINTRAG_1, EINTRAG_2],
+    stundennachweis: [],
+  };
+  expect(abrechnungsUmfang(ergebnis)).toMatchObject({
+    zeiteintragIds: [EINTRAG_1, EINTRAG_2],
+    pauschalMonate: [],
+    zusatzauftragIds: [STURMSCHADEN],
+    summeCent: 92000,
+  });
 });
