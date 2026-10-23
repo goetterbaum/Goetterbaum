@@ -16,6 +16,7 @@ import styles from "../page.module.css";
 import { Abrechnungen } from "./abrechnungen";
 import { alsAbgerechnetMarkieren } from "./actions";
 import { Positionen } from "./positionen";
+import { Stundennachweis } from "./stundennachweis";
 
 // Kunde und erster Monat stehen in der Adresszeile (kunde, monat), damit
 // sich eine Auswahl als Link merken lässt und der CSV-Export dieselbe
@@ -125,6 +126,10 @@ function Ergebnis({ geladen }: { geladen: RechnungsvorbereitungAusAdresse }) {
               {t.csvExport}
             </a>
           </p>
+          <Stundennachweis
+            href={`/rechnungsvorbereitung/stundennachweis?${auswahl}`}
+            anzahlTage={geladen.ergebnis.stundennachweis.length}
+          />
           <p>{t.hinweisMarkieren}</p>
           <AktionsKnopf
             aktion={alsAbgerechnetMarkieren.bind(

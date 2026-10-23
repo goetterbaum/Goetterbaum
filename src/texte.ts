@@ -37,6 +37,8 @@ export const texte = {
     unvollstaendigePruefen: "Unvollständige Zeiteinträge prüfen",
     zeiteintraegeFreigeben: "Zeiteinträge freigeben",
     rechnungsvorbereitung: "Rechnungsvorbereitung",
+    arbeitszeitnachweis: "Arbeitszeitnachweis",
+    istZeit: "Ist-Zeit der Pauschal-Objekte",
     einstellungen: "Einstellungen der Firma",
     fuerAndereErfassen: "Für andere erfassen",
   },
@@ -572,6 +574,81 @@ export const texte = {
       `Rechnungsvorbereitung ${kunde} ${zusatzauftrag}.csv`,
     zumZusatzauftrag: "Zum Zusatzauftrag",
     zurRechnungsvorbereitung: "Zur Rechnungsvorbereitung",
+  },
+  stundennachweis: {
+    hinweis:
+      "Nur wenn der Kunde danach fragt: Der Stundennachweis listet die berechneten Stunden je Tag, Objekt und Tätigkeit mit der Zahl der Personen, ohne Namen.",
+    herunterladen: "Stundennachweis herunterladen (CSV-Datei)",
+    spalteDatum: "Datum",
+    spaltePersonen: "Personen",
+    dateiname: (kunde: string, was: string) => `Stundennachweis ${kunde} ${was}.csv`,
+  },
+  arbeitszeitnachweis: {
+    titel: "Arbeitszeitnachweis",
+    laedt: "Lädt …",
+    keineBerechtigung: "Den Arbeitszeitnachweis darf nur das Büro sehen.",
+    hinweis:
+      "Alle beendeten Zeiteinträge des Mitarbeiters einschließlich Fahrten, ob freigegeben oder nicht, je Tag mit Tagessumme. Ein Zeiteintrag über Mitternacht wird an der Tagesgrenze geteilt.",
+    mitarbeiter: "Mitarbeiter",
+    mitarbeiterWaehlen: "Bitte wählen",
+    deaktiviert: (name: string) => `${name} (deaktiviert)`,
+    von: "Von",
+    bis: "Bis",
+    anzeigen: "Anzeigen",
+    mitarbeiterNichtGefunden: "Diesen Mitarbeiter gibt es nicht.",
+    ueberschrift: (name: string, von: string, bis: string) => `${name}: ${von} bis ${bis}`,
+    keine: "In diesem Zeitraum gibt es keine beendeten Zeiteinträge.",
+    warnungLaufend: (anzahl: number) =>
+      anzahl === 1
+        ? "Achtung: 1 Zeiteintrag im Zeitraum läuft noch. Er fehlt, bis er beendet ist."
+        : `Achtung: ${anzahl} Zeiteinträge im Zeitraum laufen noch. Sie fehlen, bis sie beendet sind.`,
+    spalteDatum: "Datum",
+    spalteVon: "Von",
+    spalteBis: "Bis",
+    spalteArt: "Art",
+    spalteObjekt: "Objekt",
+    spalteTaetigkeit: "Tätigkeit",
+    spalteZusatzauftrag: "Zusatzauftrag",
+    spalteNachtrag: "Nachtrag",
+    spalteStunden: "Stunden",
+    spalteMinuten: "Minuten",
+    tagessumme: "Tagessumme",
+    summe: "Summe",
+    stunden: (stunden: string) => `${stunden} Std.`,
+    csvExport: "Als CSV-Datei herunterladen",
+    csvDateiname: (name: string, von: string, bis: string) =>
+      `Arbeitszeitnachweis ${name} ${von} bis ${bis}.csv`,
+  },
+  istZeit: {
+    titel: "Ist-Zeit der Pauschal-Objekte",
+    laedt: "Lädt …",
+    keineBerechtigung: "Die Ist-Zeit der Pauschal-Objekte darf nur das Büro sehen.",
+    hinweis:
+      "Die tatsächlich erfasste Zeit in einem Pauschal-Objekt je Tätigkeit, ob freigegeben oder nicht und ohne Rundungsregel. So siehst du, ob sich die Pauschale lohnt.",
+    objekt: "Pauschal-Objekt",
+    objektWaehlen: "Bitte wählen",
+    von: "Von",
+    bis: "Bis",
+    anzeigen: "Anzeigen",
+    stunden: (stunden: string) => `${stunden} Std.`,
+    warnungLaufend: (anzahl: number) =>
+      anzahl === 1
+        ? "Achtung: 1 Zeiteintrag in diesem Objekt läuft noch. Er fehlt, bis er beendet ist."
+        : `Achtung: ${anzahl} Zeiteinträge in diesem Objekt laufen noch. Sie fehlen, bis sie beendet sind.`,
+    archiviert: (bezeichnung: string) => `${bezeichnung} (archiviert)`,
+    keineObjekte: "Es gibt noch kein Pauschal-Objekt.",
+    objektNichtGefunden: "Dieses Pauschal-Objekt gibt es nicht.",
+    ueberschrift: (bezeichnung: string, von: string, bis: string) =>
+      `${bezeichnung}: ${von} bis ${bis}`,
+    kundeUndPauschale: (kunde: string, pauschale: string) =>
+      `Kunde: ${kunde} · Pauschale: ${pauschale} im Monat`,
+    keine:
+      "In diesem Zeitraum wurde in diesem Objekt keine Zeit für die regelmäßige Arbeit erfasst.",
+    spalteTaetigkeit: "Tätigkeit",
+    spalteStunden: "Stunden",
+    summe: "Summe",
+    zusatzauftraege: (stunden: string) =>
+      `Dazu ${stunden} Std. für Zusatzaufträge. Sie werden extra abgerechnet und sind oben nicht enthalten.`,
   },
   abrechnung: {
     abgerechnet:

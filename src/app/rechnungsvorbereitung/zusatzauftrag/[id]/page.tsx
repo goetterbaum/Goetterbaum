@@ -14,6 +14,7 @@ import styles from "../../../page.module.css";
 import { Abrechnungen } from "../../abrechnungen";
 import { zusatzauftragEinzelnAbrechnen } from "../../actions";
 import { Positionen } from "../../positionen";
+import { Stundennachweis } from "../../stundennachweis";
 
 // Die Rechnungsvorbereitung nur für einen erledigten Zusatzauftrag, den
 // das Büro sofort abrechnet, ohne das Ende des Abrechnungszeitraums
@@ -104,6 +105,10 @@ function Ergebnis({ geladen }: { geladen: RechnungsvorbereitungFuerZusatzauftrag
               {t.csvExport}
             </a>
           </p>
+          <Stundennachweis
+            href={`/rechnungsvorbereitung/zusatzauftrag/${zusatzauftrag.id}/stundennachweis`}
+            anzahlTage={geladen.ergebnis.stundennachweis.length}
+          />
           {!zusatzauftrag.wartetAufFreigabe && (
             <>
               <p>{t.einzelnHinweisMarkieren}</p>

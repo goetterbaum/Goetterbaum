@@ -77,6 +77,12 @@ export function aufBerlinerTageVerteilt(
   return stuecke;
 }
 
+// Ein Kalendertag "JJJJ-MM-TT" als deutsches Datum "TT.MM.JJJJ".
+export function datumAlsText(datum: string): string {
+  const [jahr, monat, tag] = datum.split("-");
+  return `${tag}.${monat}.${jahr}`;
+}
+
 // Der heutige Tag in Berlin als "JJJJ-MM-TT".
 export function heuteInBerlin(): string {
   return berlinerDatum(Date.now());

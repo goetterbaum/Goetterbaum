@@ -1,7 +1,6 @@
-// Die Rechnungsvorbereitung als CSV-Datei, die deutsches Excel direkt
-// richtig öffnet: UTF-8 mit BOM (sonst zeigt Excel Umlaute falsch),
-// Semikolon als Trennzeichen und Beträge als Kommazahl ohne Euro-Zeichen,
-// damit Excel mit ihnen rechnen kann.
+// Die Rechnungsvorbereitung als CSV-Datei. Beträge stehen als Kommazahl
+// ohne Euro-Zeichen darin, damit Excel mit ihnen rechnen kann.
+import { csvDatei as datei, csvInhalt, csvText as text } from "@/lib/csv";
 import { euroAlsEingabe } from "@/lib/geld";
 import { texte } from "@/texte";
 import { stundenAlsText, type Zeilen } from "./zeilen";
@@ -31,28 +30,10 @@ export function rechnungsCsv({ zeilen, summeCent }: Zeilen): string {
     euroAlsEingabe(z.betragCent),
   ]);
   const summe = [t.summe, ...kopf.slice(2).map(() => ""), euroAlsEingabe(summeCent)];
-  return "﻿" + [kopf, ...zeilenAlsText, summe].map((z) => z.join(";") + "\r\n").join("");
+  return csvInhalt([kopf, ...zeilenAlsText, summe]);
 }
 
-// Ein Text als Zelle. Was mit =, +, - oder @ beginnt, hielte Excel für eine
-// Formel; ein vorangestelltes Hochkomma macht es zu Text. Trennzeichen,
-// Anführungszeichen und Zeilenumbrüche stehen in Anführungszeichen.
-function text(wert: string): string {
-  const sicher = /^[=+\-@\t\r]/.test(wert) ? `'${wert}` : wert;
-  return /[;"\r\n]/.test(sicher) ? `"${sicher.replace(/"/g, '""')}"` : sicher;
-}
-
-// Die CSV-Datei als Antwort zum Herunterladen.
+// Eine CSV-Datei der Rechnungsvorbereitung als Antwort zum Herunterladen.
 export function csvDatei(csv: string, dateiname: string): Response {
-  // Zeichen, die in Dateinamen stören, werden ersetzt.
-  const sicher = dateiname.replace(/[\/:*?"<>|\r\n]/g, "_");
-  return new Response(csv, {
-    headers: {
-      "Content-Type": "text/csv; charset=utf-8",
-      // Ältere Programme lesen nur den einfachen Namen, die anderen den
-      // vollständigen mit Umlauten.
-      "Content-Disposition": `attachment; filename="Rechnungsvorbereitung.csv"; filename*=UTF-8''${encodeURIComponent(sicher)}`,
-      "Cache-Control": "no-store",
-    },
-  });
+  return datei(csv, dateiname, "Rechnungsvorbereitung.csv");
 }

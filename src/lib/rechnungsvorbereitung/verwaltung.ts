@@ -20,12 +20,9 @@ import {
   type Zeiteintrag,
 } from "@/lib/rechnungsvorbereitung";
 import { ladeKundenStundensaetze } from "@/lib/stundensaetze/verwaltung";
+import { alleSeiten } from "@/lib/supabase/alle-seiten";
 import { gewaehlterZeitraum, monatVon, type GewaehlterZeitraum } from "./zeitraum";
 import type { Namen } from "./zeilen";
-
-// So viele Zeilen liefert die Schnittstelle höchstens auf einmal
-// (max_rows in supabase/config.toml).
-const SEITE = 1000;
 
 type ObjektZeile = {
   id: string;
@@ -343,20 +340,6 @@ async function ladeAbrechenbareZeiteintraege(
   ]);
   const schonDabei = new Set(imZeitraum.map((z) => z.id));
   return [...imZeitraum, ...fuerFestbetraege.filter((z) => !schonDabei.has(z.id))];
-}
-
-// Lädt Seite für Seite, bis eine nicht mehr voll ist.
-async function alleSeiten<T>(
-  seite: (ab: number, bis: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
-): Promise<T[]> {
-  const alle: T[] = [];
-  for (let ab = 0; ; ab += SEITE) {
-    const { data, error } = await seite(ab, ab + SEITE - 1);
-    if (error) throw error;
-    const zeilen = data ?? [];
-    alle.push(...zeilen);
-    if (zeilen.length < SEITE) return alle;
-  }
 }
 
 // Die Pauschal-Monate der Objekte aus gültigen Abrechnungen.
