@@ -5,7 +5,7 @@
 import { aufBerlinerTageVerteilt, berlinerUhrzeit, datumAlsText } from "@/lib/berliner-zeit";
 import { csvInhalt, csvText as text } from "@/lib/csv";
 import { stundenAlsText } from "@/lib/rechnungsvorbereitung/zeilen";
-import type { ZeiteintragArt } from "@/lib/zeiterfassung/anzeige";
+import { artAlsText, type ZeiteintragArt } from "@/lib/zeiterfassung/anzeige";
 import { texte } from "@/texte";
 
 // Ein beendeter Zeiteintrag mit Namen. Zeitpunkte als ISO-Text mit
@@ -89,7 +89,7 @@ export function arbeitszeitnachweisCsv({ tage, minuten }: Arbeitszeitnachweis): 
         datum,
         z.von,
         z.bis,
-        z.art === "fahrt" ? texte.erfassung.fahrt : texte.erfassung.taetigkeit,
+        artAlsText(z.art),
         text(z.objekt ?? ""),
         text(z.taetigkeit ?? ""),
         text(z.zusatzauftrag ?? ""),

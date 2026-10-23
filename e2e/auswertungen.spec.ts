@@ -227,7 +227,7 @@ test("Das Büro sieht die tatsächlich erfasste Zeit eines Pauschal-Objekts je T
     mitarbeiterId: string,
     taetigkeitId: string,
     beginn: string,
-    ende: string,
+    ende: string | null,
     mitZusatzauftrag = false,
   ) =>
     legeZeiteintragAn(dienst, {
@@ -248,6 +248,8 @@ test("Das Büro sieht die tatsächlich erfasste Zeit eines Pauschal-Objekts je T
   await eintrag(erster.id, glas.taetigkeitId, "2026-03-13T08:00:00Z", "2026-03-13T08:29:30Z", true);
   // Gehört schon in den April.
   await eintrag(erster.id, glas.taetigkeitId, "2026-04-02T06:58:09Z", "2026-04-02T08:01:33Z");
+  // Seit März vergessen zu stoppen: fehlt, löst die Warnung aus.
+  await eintrag(zweiter.id, glas.taetigkeitId, "2026-03-31T05:00:12Z", null);
 
   await meldeAn(page, buero);
   await erwarteAngemeldet(page, buero.name);
@@ -266,6 +268,9 @@ test("Das Büro sieht die tatsächlich erfasste Zeit eines Pauschal-Objekts je T
     // Zwischen Betrag und Euro-Zeichen steht ein geschütztes Leerzeichen.
     page.getByText(new RegExp(`^Kunde: ${kunde!.name} · Pauschale: 500,00\\s€ im Monat$`)),
   ).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "Achtung" })).toContainText(
+    "1 Zeiteintrag in diesem Objekt läuft noch",
+  );
   await expect(page.locator("tbody").getByRole("row")).toHaveCount(2);
   await expect(zeile(page, unterhalt.name)).toContainText("1:28 Std.");
   await expect(zeile(page, glas.name)).toContainText("0:45 Std.");

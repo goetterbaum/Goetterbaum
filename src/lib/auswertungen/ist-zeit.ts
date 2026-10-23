@@ -7,7 +7,8 @@ import { aufBerlinerTageVerteilt } from "@/lib/berliner-zeit";
 
 // Ein beendeter Zeiteintrag in dem Objekt (Fahrten haben kein Objekt).
 export type EintragFuerIstZeit = {
-  taetigkeitId: string;
+  // Der Name der Tätigkeit; er ist je Firma eindeutig.
+  taetigkeit: string;
   zusatzauftragId: string | null;
   beginn: string;
   ende: string;
@@ -15,7 +16,7 @@ export type EintragFuerIstZeit = {
 
 export type IstZeit = {
   // In der Reihenfolge, in der die Tätigkeiten zuerst vorkommen.
-  jeTaetigkeit: { taetigkeitId: string; minuten: number }[];
+  jeTaetigkeit: { taetigkeit: string; minuten: number }[];
   minuten: number;
   zusatzauftraegeMinuten: number;
 };
@@ -34,11 +35,11 @@ export function istZeit(eintraege: EintragFuerIstZeit[], von: string, bis: strin
     const ms = imZeitraum(z);
     if (ms === 0) continue;
     if (z.zusatzauftragId !== null) zusatzauftraegeMs += ms;
-    else jeTaetigkeitMs.set(z.taetigkeitId, (jeTaetigkeitMs.get(z.taetigkeitId) ?? 0) + ms);
+    else jeTaetigkeitMs.set(z.taetigkeit, (jeTaetigkeitMs.get(z.taetigkeit) ?? 0) + ms);
   }
 
-  const jeTaetigkeit = [...jeTaetigkeitMs].map(([taetigkeitId, ms]) => ({
-    taetigkeitId,
+  const jeTaetigkeit = [...jeTaetigkeitMs].map(([taetigkeit, ms]) => ({
+    taetigkeit,
     minuten: Math.round(ms / 60_000),
   }));
   return {

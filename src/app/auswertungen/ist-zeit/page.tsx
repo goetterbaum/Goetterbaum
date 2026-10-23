@@ -65,14 +65,12 @@ async function Inhalt({
             </select>
           </label>{" "}
           <label>
-            {texte.arbeitszeitnachweis.von}{" "}
-            <input type="date" name="von" defaultValue={zeitraum.von} required />
+            {t.von} <input type="date" name="von" defaultValue={zeitraum.von} required />
           </label>{" "}
           <label>
-            {texte.arbeitszeitnachweis.bis}{" "}
-            <input type="date" name="bis" defaultValue={zeitraum.bis} required />
+            {t.bis} <input type="date" name="bis" defaultValue={zeitraum.bis} required />
           </label>{" "}
-          <button type="submit">{texte.arbeitszeitnachweis.anzeigen}</button>
+          <button type="submit">{t.anzeigen}</button>
         </form>
       )}
       {gewaehlt && !geladen && <p>{t.objektNichtGefunden}</p>}
@@ -86,12 +84,11 @@ async function Inhalt({
 
 function Ergebnis({ geladen }: { geladen: GeladeneIstZeit }) {
   const t = texte.istZeit;
-  const { objekt, zeitraum, istZeit, taetigkeiten } = geladen;
-  const name = (id: string) => taetigkeiten.get(id) ?? texte.rechnungsvorbereitung.unbekannt;
+  const { objekt, zeitraum, istZeit, laufend } = geladen;
   const zeilen = [...istZeit.jeTaetigkeit].sort((a, b) =>
-    name(a.taetigkeitId).localeCompare(name(b.taetigkeitId), "de"),
+    a.taetigkeit.localeCompare(b.taetigkeit, "de"),
   );
-  const stunden = (minuten: number) => texte.arbeitszeitnachweis.stunden(stundenAlsText(minuten));
+  const stunden = (minuten: number) => t.stunden(stundenAlsText(minuten));
 
   return (
     <>
@@ -99,6 +96,7 @@ function Ergebnis({ geladen }: { geladen: GeladeneIstZeit }) {
         {t.ueberschrift(objekt.bezeichnung, datumAlsText(zeitraum.von), datumAlsText(zeitraum.bis))}
       </h2>
       <p>{t.kundeUndPauschale(objekt.kunde.name, euroAlsText(objekt.pauschale_cent))}</p>
+      {laufend > 0 && <p role="alert">{t.warnungLaufend(laufend)}</p>}
       {zeilen.length === 0 ? (
         <p>{t.keine}</p>
       ) : (
@@ -111,8 +109,8 @@ function Ergebnis({ geladen }: { geladen: GeladeneIstZeit }) {
           </thead>
           <tbody>
             {zeilen.map((z) => (
-              <tr key={z.taetigkeitId}>
-                <td>{name(z.taetigkeitId)}</td>
+              <tr key={z.taetigkeit}>
+                <td>{z.taetigkeit}</td>
                 <td>{stunden(z.minuten)}</td>
               </tr>
             ))}

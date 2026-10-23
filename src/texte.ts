@@ -627,6 +627,14 @@ export const texte = {
       "Die tatsächlich erfasste Zeit in einem Pauschal-Objekt je Tätigkeit, ob freigegeben oder nicht und ohne Rundungsregel. So siehst du, ob sich die Pauschale lohnt.",
     objekt: "Pauschal-Objekt",
     objektWaehlen: "Bitte wählen",
+    von: "Von",
+    bis: "Bis",
+    anzeigen: "Anzeigen",
+    stunden: (stunden: string) => `${stunden} Std.`,
+    warnungLaufend: (anzahl: number) =>
+      anzahl === 1
+        ? "Achtung: 1 Zeiteintrag in diesem Objekt läuft noch. Er fehlt, bis er beendet ist."
+        : `Achtung: ${anzahl} Zeiteinträge in diesem Objekt laufen noch. Sie fehlen, bis sie beendet sind.`,
     archiviert: (bezeichnung: string) => `${bezeichnung} (archiviert)`,
     keineObjekte: "Es gibt noch kein Pauschal-Objekt.",
     objektNichtGefunden: "Dieses Pauschal-Objekt gibt es nicht.",

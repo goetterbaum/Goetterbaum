@@ -1,6 +1,7 @@
 // Lädt die Daten für die Auswertungen des Büros. Welche Daten der Nutzer
-// sehen darf, entscheidet die Datenbank: zeiteintraege_der_firma liefert
-// nur dem Büro etwas, und die Zugriffsregeln trennen die Firmen.
+// sehen darf, entscheidet die Datenbank: Alle Zeiteinträge kommen über
+// zeiteintraege_der_firma, die nur dem Büro etwas liefert, und die
+// Zugriffsregeln trennen die Firmen.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { istId } from "@/lib/id";
 import { alleSeiten } from "@/lib/supabase/alle-seiten";
@@ -118,7 +119,9 @@ export type GeladeneIstZeit = {
   objekt: PauschalObjekt;
   zeitraum: AuswertungsZeitraum;
   istZeit: IstZeit;
-  taetigkeiten: Map<string, string>;
+  // Laufende Zeiteinträge im Objekt, die vor dem Ende des Zeitraums
+  // begonnen haben. Sie fehlen, bis sie beendet sind.
+  laufend: number;
 };
 
 // Die Ist-Zeit zu Pauschal-Objekt und Zeitraum aus der Adresszeile
@@ -134,54 +137,34 @@ export async function ladeIstZeit(
   if (!istId(id)) return null;
   const zeitraum = zeitraumAusAdresse(parameter);
 
-  type Zeile = {
-    id: string;
-    taetigkeit_id: string;
-    zusatzauftrag_id: string | null;
-    beginn: string;
-    ende: string;
-  };
-  const [objekt, eintraege] = await Promise.all([
+  // Wie beim Arbeitszeitnachweis: alle Einträge, hier gefiltert.
+  const eintraegeImObjekt = () =>
+    supabase
+      .rpc("zeiteintraege_der_firma", { ab: "-infinity" })
+      .eq("objekt_id", id)
+      .lt("beginn", zeitraum.bisVor);
+  const [objekt, beendete, laufende] = await Promise.all([
     supabase
       .from("objekt")
       .select("id, bezeichnung, pauschale_cent, archiviert, kunde(name)")
       .eq("id", id)
       .eq("abrechnungsart", "pauschale")
       .maybeSingle<PauschalObjekt>(),
-    alleSeiten((ab, bis) =>
-      supabase
-        .from("zeiteintrag")
-        .select("id, taetigkeit_id, zusatzauftrag_id, beginn, ende")
-        .eq("objekt_id", id)
-        .lt("beginn", zeitraum.bisVor)
-        .gt("ende", zeitraum.ab)
-        .order("beginn")
-        .order("id")
-        .range(ab, bis)
-        .returns<Zeile[]>(),
+    alleSeiten<ZeiteintragDerFirma & { ende: string; taetigkeit_name: string }>((ab, bis) =>
+      eintraegeImObjekt().gt("ende", zeitraum.ab).order("beginn").order("id").range(ab, bis),
     ),
+    eintraegeImObjekt().is("ende", null),
   ]);
   if (objekt.error) throw objekt.error;
+  if (laufende.error) throw laufende.error;
   if (!objekt.data) return null;
-
-  // Auch archivierte Tätigkeiten, denn ihre Zeit zählt noch.
-  const taetigkeitIds = [...new Set(eintraege.map((z) => z.taetigkeit_id))];
-  const { data: taetigkeiten, error } =
-    taetigkeitIds.length === 0
-      ? { data: [], error: null }
-      : await supabase
-          .from("taetigkeit")
-          .select("id, name")
-          .in("id", taetigkeitIds)
-          .returns<{ id: string; name: string }[]>();
-  if (error) throw error;
 
   return {
     objekt: objekt.data,
     zeitraum,
     istZeit: istZeit(
-      eintraege.map((z) => ({
-        taetigkeitId: z.taetigkeit_id,
+      beendete.map((z) => ({
+        taetigkeit: z.taetigkeit_name,
         zusatzauftragId: z.zusatzauftrag_id,
         beginn: z.beginn,
         ende: z.ende,
@@ -189,6 +172,6 @@ export async function ladeIstZeit(
       zeitraum.von,
       zeitraum.bis,
     ),
-    taetigkeiten: new Map(taetigkeiten.map((t) => [t.id, t.name])),
+    laufend: (laufende.data as ZeiteintragDerFirma[]).length,
   };
 }
