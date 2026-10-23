@@ -66,6 +66,12 @@ async function Begruessung() {
             <Link href="/rechnungsvorbereitung">{texte.start.rechnungsvorbereitung}</Link>
           </p>
           <p>
+            <Link href="/auswertungen/arbeitszeitnachweis">{texte.start.arbeitszeitnachweis}</Link>
+          </p>
+          <p>
+            <Link href="/auswertungen/ist-zeit">{texte.start.istZeit}</Link>
+          </p>
+          <p>
             <Link href="/einstellungen">{texte.start.einstellungen}</Link>
           </p>
         </>
