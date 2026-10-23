@@ -89,7 +89,7 @@ test("Das Büro lädt zu einer Rechnungsvorbereitung auf Nachfrage den Stundenna
   await expect(page.getByText(/^Nur wenn der Kunde danach fragt/)).toBeVisible();
 
   const herunterladen = page.waitForEvent("download");
-  await page.getByRole("link", { name: "Stundennachweis als CSV-Datei herunterladen" }).click();
+  await page.getByRole("link", { name: "Stundennachweis herunterladen (CSV-Datei)" }).click();
   const datei = await herunterladen;
   expect(datei.suggestedFilename()).toBe(`Stundennachweis ${kunde!.name} 2026-03.csv`);
   // Gerundet je Objekt, Tätigkeit und Tag: 106:29 → 120, 12:05 → 15.
@@ -115,7 +115,7 @@ test("Ohne berechnete Stunden gibt es keinen Stundennachweis", async ({ page }) 
   await page.goto(`/rechnungsvorbereitung?kunde=${kundeId}&monat=2026-03`);
   await expect(page.locator("tfoot")).toContainText(/Summe\s*500,00\s€/);
   await expect(
-    page.getByRole("link", { name: "Stundennachweis als CSV-Datei herunterladen" }),
+    page.getByRole("link", { name: "Stundennachweis herunterladen (CSV-Datei)" }),
   ).toHaveCount(0);
 });
 
@@ -141,9 +141,9 @@ test("Das Büro sieht den Arbeitszeitnachweis eines deaktivierten Mitarbeiters m
   await eintrag("2026-03-10T07:02:13Z", "2026-03-10T08:09:36Z");
   // Über Mitternacht, nachgetragen: 23:41:12 bis 00:12:05 in Berlin.
   const ueberMitternacht = await eintrag("2026-03-10T22:41:12Z", "2026-03-10T23:12:05Z");
-  // Gehört schon in den April.
-  await eintrag("2026-04-02T06:58:09Z", "2026-04-02T08:01:33Z");
-  // Seit März vergessen zu stoppen: fehlt, löst die Warnung aus.
+  // Seit dem 31.03. vergessen zu stoppen: fehlt, löst die Warnung aus. Ein
+  // späterer Eintrag dieses Mitarbeiters würde sich damit überschneiden;
+  // die Grenze am Ende des Zeitraums prüfen die Unit-Tests.
   await eintrag("2026-03-31T05:00:12Z", null);
   const { error } = await dienst
     .from("zeiteintrag")

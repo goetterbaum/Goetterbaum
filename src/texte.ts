@@ -578,7 +578,7 @@ export const texte = {
   stundennachweis: {
     hinweis:
       "Nur wenn der Kunde danach fragt: Der Stundennachweis listet die berechneten Stunden je Tag, Objekt und Tätigkeit mit der Zahl der Personen, ohne Namen.",
-    herunterladen: "Stundennachweis als CSV-Datei herunterladen",
+    herunterladen: "Stundennachweis herunterladen (CSV-Datei)",
     spalteDatum: "Datum",
     spaltePersonen: "Personen",
     dateiname: (kunde: string, was: string) => `Stundennachweis ${kunde} ${was}.csv`,
