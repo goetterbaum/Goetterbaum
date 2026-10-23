@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { angemeldeterMitarbeiter } from "@/lib/angemeldeter-mitarbeiter";
-import { rechnungsCsv } from "@/lib/rechnungsvorbereitung/csv";
+import { csvDatei, rechnungsCsv } from "@/lib/rechnungsvorbereitung/csv";
 import { ladeRechnungsvorbereitungAusAdresse } from "@/lib/rechnungsvorbereitung/verwaltung";
 import { rechnungsZeilen } from "@/lib/rechnungsvorbereitung/zeilen";
 import { createClient } from "@/lib/supabase/server";
@@ -22,18 +22,8 @@ export async function GET(request: NextRequest) {
     return new Response(texte.rechnungsvorbereitung.kundeNichtGefunden, { status: 404 });
   }
 
-  const csv = rechnungsCsv(rechnungsZeilen(geladen.ergebnis, geladen.namen));
-  const dateiname = texte.rechnungsvorbereitung
-    .csvDateiname(geladen.kunde.name, geladen.zeitraum.ersterMonat)
-    // Zeichen, die in Dateinamen stören, werden ersetzt.
-    .replace(/[\/:*?"<>|\r\n]/g, "_");
-  return new Response(csv, {
-    headers: {
-      "Content-Type": "text/csv; charset=utf-8",
-      // Ältere Programme lesen nur den einfachen Namen, die anderen den
-      // vollständigen mit Umlauten.
-      "Content-Disposition": `attachment; filename="Rechnungsvorbereitung.csv"; filename*=UTF-8''${encodeURIComponent(dateiname)}`,
-      "Cache-Control": "no-store",
-    },
-  });
+  return csvDatei(
+    rechnungsCsv(rechnungsZeilen(geladen.ergebnis, geladen.namen)),
+    texte.rechnungsvorbereitung.csvDateiname(geladen.kunde.name, geladen.zeitraum.ersterMonat),
+  );
 }

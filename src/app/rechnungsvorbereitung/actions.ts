@@ -4,7 +4,10 @@ import { refresh } from "next/cache";
 import { alsBuero } from "@/lib/als-buero";
 import { istId } from "@/lib/id";
 import { abrechnungsStand, abrechnungsUmfang } from "@/lib/rechnungsvorbereitung/abrechnung";
-import { ladeRechnungsvorbereitungAusAdresse } from "@/lib/rechnungsvorbereitung/verwaltung";
+import {
+  ladeRechnungsvorbereitungAusAdresse,
+  ladeRechnungsvorbereitungFuerZusatzauftrag,
+} from "@/lib/rechnungsvorbereitung/verwaltung";
 import { ersterTag } from "@/lib/rechnungsvorbereitung/zeitraum";
 import { FEHLER, OK, type Rueckmeldung } from "@/lib/rueckmeldung";
 import { texte } from "@/texte";
@@ -45,6 +48,49 @@ export async function alsAbgerechnetMarkieren(
   refresh();
   if (error) {
     console.error("Als abgerechnet markieren fehlgeschlagen", error);
+    return FEHLER(t.fehlerMarkieren);
+  }
+  return OK(t.markiert);
+}
+
+// Rechnet einen erledigten Zusatzauftrag einzeln ab, mit seiner
+// freigegebenen, noch offenen Zeit aus allen Monaten. Wie beim Markieren
+// oben ist stand der Fingerabdruck dessen, was das Büro gesehen hat. Nach
+// Stunden geht es erst, wenn alle seine Zeit freigegeben ist. Dass der
+// Zusatzauftrag erledigt und noch offen ist und keine Zeit fehlt, prüft
+// zusätzlich die Datenbank.
+export async function zusatzauftragEinzelnAbrechnen(
+  zusatzauftragId: string,
+  stand: string,
+): Promise<Rueckmeldung> {
+  const t = texte.rechnungsvorbereitung;
+  const { supabase, ich } = await alsBuero();
+  const geladen = await ladeRechnungsvorbereitungFuerZusatzauftrag(
+    supabase,
+    ich.firma_id,
+    zusatzauftragId,
+  );
+  if (!geladen) return FEHLER(texte.zusatzauftraege.nichtGefunden);
+  if (abrechnungsStand(geladen.ergebnis) !== stand) {
+    refresh();
+    return FEHLER(t.fehlerVeraendert);
+  }
+  if (geladen.zusatzauftrag.wartetAufFreigabe) {
+    refresh();
+    return FEHLER(t.fehlerWartetAufFreigabe);
+  }
+  const umfang = abrechnungsUmfang(geladen.ergebnis);
+  if (!umfang) return FEHLER(t.einzelnNichtsAbzurechnen);
+
+  const { error } = await supabase.rpc("zusatzauftrag_einzeln_abrechnen", {
+    welcher: geladen.zusatzauftrag.id,
+    eintraege: umfang.zeiteintragIds,
+    aufstellung: umfang.positionen,
+    summe: umfang.summeCent,
+  });
+  refresh();
+  if (error) {
+    console.error("Zusatzauftrag einzeln abrechnen fehlgeschlagen", error);
     return FEHLER(t.fehlerMarkieren);
   }
   return OK(t.markiert);

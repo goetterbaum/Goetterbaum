@@ -93,7 +93,7 @@ Eine Einzelaufstellung der berechneten Stunden (Datum, Objekt, Tätigkeit, Dauer
 _Avoid_: Leistungsnachweis, Regiebericht
 
 **Zusatzauftrag**:
-Eine vom Büro angelegte Arbeit in einem Objekt mit eigener Abrechnungsart (Stunden oder Festbetrag), abweichend von der des Objekts, z. B. ein Sturmschaden in einem Pauschal-Objekt. Kann nach Erledigung sofort einzeln abgerechnet werden.
+Eine vom Büro angelegte Arbeit in einem Objekt mit eigener Abrechnungsart (Stunden oder Festbetrag), abweichend von der des Objekts, z. B. ein Sturmschaden in einem Pauschal-Objekt. Kann nach Erledigung sofort einzeln abgerechnet werden, nach Stunden erst, wenn alle seine Zeiteinträge freigegeben sind.
 _Avoid_: Sonderauftrag, Extraarbeit, Regiearbeit
 
 **Festbetrag**:
@@ -109,5 +109,5 @@ Die Zusammenstellung aller abzurechnenden Pauschalen, Stunden und Zusatzaufträg
 _Avoid_: Rechnungsentwurf, Abrechnungsliste
 
 **Abrechnung**:
-Eine als abgerechnet markierte Rechnungsvorbereitung: Kunde, Zeitraum, Positionen und Summe, wann und von wem, dazu die umfassten Zeiteinträge, Pauschal-Monate und Zusatzaufträge mit Festbetrag. Diese sind danach für alle gesperrt und erscheinen in keiner weiteren Rechnungsvorbereitung. Das Büro kann eine Abrechnung nach Rückfrage zurücknehmen; sie bleibt dann als zurückgenommen stehen, und ihr Inhalt ist wieder abrechenbar.
+Eine als abgerechnet markierte Rechnungsvorbereitung: Kunde, Zeitraum (bei einem einzeln abgerechneten Zusatzauftrag stattdessen dieser), Positionen und Summe, wann und von wem, dazu die umfassten Zeiteinträge, Pauschal-Monate und Zusatzaufträge mit Festbetrag. Diese sind danach für alle gesperrt und erscheinen in keiner weiteren Rechnungsvorbereitung. Das Büro kann eine Abrechnung nach Rückfrage zurücknehmen; sie bleibt dann als zurückgenommen stehen, und ihr Inhalt ist wieder abrechenbar.
 _Avoid_: Rechnung (die schreibt das Büro in DATEV), Abschluss

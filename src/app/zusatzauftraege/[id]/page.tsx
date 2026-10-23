@@ -50,6 +50,15 @@ async function Bearbeiten({ id: idVersprechen }: { id: Promise<string> }) {
         {" · "}
         {zusatzauftragStatus(zusatzauftrag)}
       </p>
+      {/* Erledigt lässt er sich sofort abrechnen, ohne das Ende des
+          Abrechnungszeitraums abzuwarten. */}
+      {zusatzauftrag.erledigt && !zusatzauftrag.abgerechnet_in && (
+        <p>
+          <Link href={`/rechnungsvorbereitung/zusatzauftrag/${zusatzauftrag.id}`}>
+            {t.einzelnAbrechnen}
+          </Link>
+        </p>
+      )}
       {zusatzauftrag.abgerechnet_in ? (
         <p>{t.abgerechnetHinweis}</p>
       ) : (

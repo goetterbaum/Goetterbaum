@@ -1,24 +1,21 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { AktionsKnopf } from "@/app/aktions-knopf";
-import { KnopfMitRueckfrage } from "@/app/knopf-mit-rueckfrage";
 import { NurFuerBuero } from "@/app/nur-fuer-buero";
 import { berlinerDatum } from "@/lib/berliner-zeit";
-import { euroAlsText } from "@/lib/geld";
 import { ladeKundenliste } from "@/lib/kunden/verwaltung";
 import { abrechnungsStand } from "@/lib/rechnungsvorbereitung/abrechnung";
 import {
-  ladeAbrechnungen,
   ladeRechnungsvorbereitungAusAdresse,
   type RechnungsvorbereitungAusAdresse,
 } from "@/lib/rechnungsvorbereitung/verwaltung";
-import { gewaehlterZeitraum, monatVon } from "@/lib/rechnungsvorbereitung/zeitraum";
-import { rechnungsZeilen, stundenAlsText } from "@/lib/rechnungsvorbereitung/zeilen";
+import { rechnungsZeilen } from "@/lib/rechnungsvorbereitung/zeilen";
 import { createClient } from "@/lib/supabase/server";
-import { zeitAlsText } from "@/lib/zeiterfassung/protokoll";
 import { texte } from "@/texte";
 import styles from "../page.module.css";
-import { abrechnungZuruecknehmen, alsAbgerechnetMarkieren } from "./actions";
+import { Abrechnungen } from "./abrechnungen";
+import { alsAbgerechnetMarkieren } from "./actions";
+import { Positionen } from "./positionen";
 
 // Kunde und erster Monat stehen in der Adresszeile (kunde, monat), damit
 // sich eine Auswahl als Link merken lässt und der CSV-Export dieselbe
@@ -99,7 +96,7 @@ async function Inhalt({
 function Ergebnis({ geladen }: { geladen: RechnungsvorbereitungAusAdresse }) {
   const t = texte.rechnungsvorbereitung;
   const { kunde, zeitraum, nichtFreigegeben } = geladen;
-  const { zeilen, summeCent } = rechnungsZeilen(geladen.ergebnis, geladen.namen);
+  const zeilen = rechnungsZeilen(geladen.ergebnis, geladen.namen);
   const auswahl = new URLSearchParams({ kunde: kunde.id, monat: zeitraum.ersterMonat });
   const zurFreigabe = new URLSearchParams({
     kunde: kunde.id,
@@ -117,44 +114,11 @@ function Ergebnis({ geladen }: { geladen: RechnungsvorbereitungAusAdresse }) {
           <Link href={`/freigabe?${zurFreigabe}`}>{t.zurFreigabe}</Link>
         </p>
       )}
-      {zeilen.length === 0 ? (
+      {zeilen.zeilen.length === 0 ? (
         <p>{t.keinePositionen}</p>
       ) : (
         <>
-          <table>
-            <thead>
-              <tr>
-                <th>{t.spaltePosition}</th>
-                <th>{t.spalteObjekt}</th>
-                <th>{t.spalteZusatzauftrag}</th>
-                <th>{t.spalteTaetigkeit}</th>
-                <th>{t.spalteMonat}</th>
-                <th>{t.spalteStunden}</th>
-                <th>{t.spalteStundensatz}</th>
-                <th>{t.spalteBetrag}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {zeilen.map((z, i) => (
-                <tr key={i}>
-                  <td>{z.position}</td>
-                  <td>{z.objekt}</td>
-                  <td>{z.zusatzauftrag}</td>
-                  <td>{z.taetigkeit}</td>
-                  <td>{z.monat}</td>
-                  <td>{z.minuten === null ? "" : t.stunden(stundenAlsText(z.minuten))}</td>
-                  <td>{z.stundensatzCent === null ? "" : euroAlsText(z.stundensatzCent)}</td>
-                  <td>{euroAlsText(z.betragCent)}</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <th colSpan={7}>{t.summe}</th>
-                <td>{euroAlsText(summeCent)}</td>
-              </tr>
-            </tfoot>
-          </table>
+          <Positionen {...zeilen} />
           <p>
             {/* Ein normaler Link: Die Datei kommt vom Server, nicht als Seite. */}
             <a href={`/rechnungsvorbereitung/csv?${auswahl}`} download>
@@ -173,66 +137,6 @@ function Ergebnis({ geladen }: { geladen: RechnungsvorbereitungAusAdresse }) {
             knopfLaeuft={t.markierenLaeuft}
           />
         </>
-      )}
-    </>
-  );
-}
-
-// Die bisherigen Abrechnungen des Kunden; gültige lassen sich nach einer
-// Rückfrage zurücknehmen.
-async function Abrechnungen({ kundeId }: { kundeId: string }) {
-  const t = texte.rechnungsvorbereitung;
-  const abrechnungen = await ladeAbrechnungen(await createClient(), kundeId);
-  return (
-    <>
-      <h2>{t.bisherigeAbrechnungen}</h2>
-      {abrechnungen.length === 0 ? (
-        <p>{t.keineAbrechnungen}</p>
-      ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>{t.spalteZeitraum}</th>
-              <th>{t.spalteBetrag}</th>
-              <th>{t.spalteAbgerechnet}</th>
-              <th>{t.spalteStatus}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {abrechnungen.map((a) => (
-              <tr key={a.id}>
-                <td>
-                  {
-                    gewaehlterZeitraum(monatVon(a.erster_monat), a.abrechnungszeitraum, 0)
-                      .bezeichnung
-                  }
-                </td>
-                <td>{euroAlsText(a.summe_cent)}</td>
-                <td>{t.amVon(zeitAlsText(a.abgerechnet_am), a.abgerechnet_von_name)}</td>
-                <td>
-                  {a.zurueckgenommen_am !== null ? (
-                    t.zurueckgenommenAmVon(
-                      zeitAlsText(a.zurueckgenommen_am),
-                      a.zurueckgenommen_von_name ?? texte.protokoll.unbekannt,
-                    )
-                  ) : (
-                    <>
-                      {t.gueltig}
-                      <KnopfMitRueckfrage
-                        aktion={abrechnungZuruecknehmen.bind(null, a.id)}
-                        knopf={t.zuruecknehmen}
-                        rueckfrage={t.rueckfrage}
-                        bestaetigen={t.jaZuruecknehmen}
-                        abbrechen={t.abbrechen}
-                        knopfLaeuft={t.zuruecknehmenLaeuft}
-                      />
-                    </>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
       )}
     </>
   );

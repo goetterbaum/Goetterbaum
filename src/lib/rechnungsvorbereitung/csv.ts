@@ -41,3 +41,18 @@ function text(wert: string): string {
   const sicher = /^[=+\-@\t\r]/.test(wert) ? `'${wert}` : wert;
   return /[;"\r\n]/.test(sicher) ? `"${sicher.replace(/"/g, '""')}"` : sicher;
 }
+
+// Die CSV-Datei als Antwort zum Herunterladen.
+export function csvDatei(csv: string, dateiname: string): Response {
+  // Zeichen, die in Dateinamen stören, werden ersetzt.
+  const sicher = dateiname.replace(/[\/:*?"<>|\r\n]/g, "_");
+  return new Response(csv, {
+    headers: {
+      "Content-Type": "text/csv; charset=utf-8",
+      // Ältere Programme lesen nur den einfachen Namen, die anderen den
+      // vollständigen mit Umlauten.
+      "Content-Disposition": `attachment; filename="Rechnungsvorbereitung.csv"; filename*=UTF-8''${encodeURIComponent(sicher)}`,
+      "Cache-Control": "no-store",
+    },
+  });
+}
