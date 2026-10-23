@@ -115,8 +115,9 @@ test("Ein erledigter Zusatzauftrag nach Stunden wird mit seiner Zeit aus allen M
   await k.eintrag(k.pauschal.id, "2026-02-23T07:03:41Z", "2026-02-23T08:10:57Z", fuerSturmschaden);
   // 10.03., 08:02:13–09:09:36: 67 Minuten 23 Sekunden → 75 Minuten.
   await k.eintrag(k.pauschal.id, "2026-03-10T07:02:13Z", "2026-03-10T08:09:36Z", fuerSturmschaden);
-  // Noch nicht freigegeben: fehlt, mit Hinweis.
-  await k.eintrag(k.pauschal.id, "2026-03-16T07:00:44Z", "2026-03-16T09:02:03Z", {
+  // 16.03., 08:00:44–10:02:03: 121 Minuten 19 Sekunden → 135 Minuten.
+  // Noch nicht freigegeben: Bis dahin lässt er sich nicht einzeln abrechnen.
+  const spaet = await k.eintrag(k.pauschal.id, "2026-03-16T07:00:44Z", "2026-03-16T09:02:03Z", {
     ...fuerSturmschaden,
     freigegeben: false,
   });
@@ -125,18 +126,32 @@ test("Ein erledigter Zusatzauftrag nach Stunden wird mit seiner Zeit aus allen M
   await erwarteAngemeldet(page, buero.name);
   await erledigeUndOeffneEinzelAbrechnung(page, sturmschaden.zusatzauftragId);
 
-  await expect(page.getByRole("alert").filter({ hasText: "Achtung" })).toHaveText(
-    "Achtung: 1 Zeiteintrag dieses Zusatzauftrags ist noch nicht freigegeben. Er fehlt in der Rechnungsvorbereitung.",
+  const wartet = page.getByRole("alert").filter({ hasText: "noch nicht freigegeben" });
+  await expect(wartet).toHaveText(
+    "1 Zeiteintrag dieses Zusatzauftrags ist noch nicht freigegeben. Einzeln abrechnen lässt sich ein Zusatzauftrag nach Stunden erst, wenn alle seine Zeiteinträge freigegeben sind.",
   );
+  await expect(zeile(page, "Zusatzauftrag nach Stunden", sturmschaden.beschreibung)).toContainText(
+    /2:30 Std\.\s*30,00\s€\s*75,00\s€/,
+  );
+  await expect(page.getByRole("button", { name: "Als abgerechnet markieren" })).toHaveCount(0);
+
+  // Freigegeben gehört auch diese Zeit dazu.
+  const freigabe = await dienstZugang()!
+    .from("zeiteintrag")
+    .update({ freigegeben_am: "2026-04-02T08:00:00Z" })
+    .eq("id", spaet);
+  if (freigabe.error) throw freigabe.error;
+  await page.reload();
   await expect(zeile(page)).toHaveCount(1);
+  await expect(wartet).toHaveCount(0);
   await expect(
     zeile(page, "Zusatzauftrag nach Stunden", k.pauschal.bezeichnung, sturmschaden.beschreibung),
-  ).toContainText(new RegExp(`${k.taetigkeit}\\s*2:30 Std\\.\\s*30,00\\s€\\s*75,00\\s€`));
-  await expect(page.locator("tfoot")).toContainText(/Summe\s*75,00\s€/);
+  ).toContainText(new RegExp(`${k.taetigkeit}\\s*4:45 Std\\.\\s*30,00\\s€\\s*142,50\\s€`));
+  await expect(page.locator("tfoot")).toContainText(/Summe\s*142,50\s€/);
   expect(await csvVon(page)).toBe(
     "Position;Objekt;Zusatzauftrag;Tätigkeit;Monat;Stunden;Minuten;Stundensatz;Betrag\r\n" +
-      `Zusatzauftrag nach Stunden;${k.pauschal.bezeichnung};${sturmschaden.beschreibung};${k.taetigkeit};;2:30;150;30,00;75,00\r\n` +
-      "Summe;;;;;;;;75,00\r\n",
+      `Zusatzauftrag nach Stunden;${k.pauschal.bezeichnung};${sturmschaden.beschreibung};${k.taetigkeit};;4:45;285;30,00;142,50\r\n` +
+      "Summe;;;;;;;;142,50\r\n",
   );
 
   await page.getByRole("button", { name: "Als abgerechnet markieren" }).click();
@@ -146,7 +161,7 @@ test("Ein erledigter Zusatzauftrag nach Stunden wird mit seiner Zeit aus allen M
     ),
   ).toBeVisible();
   const einzeln = abrechnung(page, `Zusatzauftrag einzeln: ${sturmschaden.beschreibung}`);
-  await expect(einzeln).toContainText(/75,00\s€/);
+  await expect(einzeln).toContainText(/142,50\s€/);
   await expect(einzeln).toContainText("gültig");
 
   // Auch die reguläre Rechnungsvorbereitung des Kunden zeigt nur noch die
@@ -164,11 +179,12 @@ test("Ein erledigter Zusatzauftrag nach Stunden wird mit seiner Zeit aus allen M
   await page.getByRole("button", { name: "Ja, zurücknehmen" }).click();
   await expect(einzeln).toContainText("zurückgenommen am");
   await expect(zeile(page, "Zusatzauftrag nach Stunden", sturmschaden.beschreibung)).toContainText(
-    /2:30 Std\.\s*30,00\s€\s*75,00\s€/,
+    /4:45 Std\.\s*30,00\s€\s*142,50\s€/,
   );
+  // Regulär nur die März-Zeit: 75 + 135 Minuten.
   await page.goto(`/rechnungsvorbereitung?kunde=${k.kundeId}&monat=2026-03`);
   await expect(zeile(page, "Zusatzauftrag nach Stunden", sturmschaden.beschreibung)).toContainText(
-    /1:15 Std\.\s*30,00\s€\s*37,50\s€/,
+    /3:30 Std\.\s*30,00\s€\s*105,00\s€/,
   );
 });
 

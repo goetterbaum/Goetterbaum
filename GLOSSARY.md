@@ -93,7 +93,7 @@ Eine Einzelaufstellung der berechneten Stunden (Datum, Objekt, Tätigkeit, Dauer
 _Avoid_: Leistungsnachweis, Regiebericht
 
 **Zusatzauftrag**:
-Eine vom Büro angelegte Arbeit in einem Objekt mit eigener Abrechnungsart (Stunden oder Festbetrag), abweichend von der des Objekts, z. B. ein Sturmschaden in einem Pauschal-Objekt. Kann nach Erledigung sofort einzeln abgerechnet werden.
+Eine vom Büro angelegte Arbeit in einem Objekt mit eigener Abrechnungsart (Stunden oder Festbetrag), abweichend von der des Objekts, z. B. ein Sturmschaden in einem Pauschal-Objekt. Kann nach Erledigung sofort einzeln abgerechnet werden, nach Stunden erst, wenn alle seine Zeiteinträge freigegeben sind.
 _Avoid_: Sonderauftrag, Extraarbeit, Regiearbeit
 
 **Festbetrag**:

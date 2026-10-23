@@ -13,8 +13,9 @@ import {
 // Diese Tests gehen an der App vorbei direkt auf die öffentliche
 // Supabase-Schnittstelle. Sie prüfen, dass nur das Büro der eigenen Firma
 // einen Zusatzauftrag einzeln abrechnet, nur einen erledigten, mit genau
-// seiner freigegebenen, noch offenen Zeit, und dass nichts davon danach
-// noch einmal abgerechnet wird, bis die Abrechnung zurückgenommen ist.
+// seiner freigegebenen, noch offenen Zeit, nach Stunden erst, wenn alle
+// seine Zeit freigegeben ist, und dass nichts davon danach noch einmal
+// abgerechnet wird, bis die Abrechnung zurückgenommen ist.
 
 // Ein Zusatzauftrag im Pauschal-Objekt eines neuen Kunden mit zwei
 // freigegebenen Zeiteinträgen im Februar und März 2026 und einem noch
@@ -65,6 +66,14 @@ async function zusatzauftragMitZeit(
 }
 
 type Auftrag = Awaited<ReturnType<typeof zusatzauftragMitZeit>>;
+
+async function gibFrei(zeiteintragId: string) {
+  const { error } = await dienstZugang()!
+    .from("zeiteintrag")
+    .update({ freigegeben_am: "2026-04-02T08:00:00Z" })
+    .eq("id", zeiteintragId);
+  if (error) throw error;
+}
 
 async function setzeErledigt(zusatzauftragId: string, erledigt: boolean) {
   const { error } = await dienstZugang()!
@@ -126,6 +135,8 @@ test("Nur das Büro der eigenen Firma rechnet einen Zusatzauftrag einzeln ab, oh
   const auftrag = await zusatzauftragMitZeit(firmaA.id);
   const buero = await legeEigenenZugangAn(firmaA.id, "buero");
   const vorarbeiter = await legeEigenenZugangAn(firmaA.id, "vorarbeiter");
+  await gibFrei(auftrag.offen);
+  const eintraege = [auftrag.februar, auftrag.maerz, auftrag.offen];
 
   for (const [zugang, code] of [
     [auftrag.mitarbeiter, "42501"],
@@ -133,13 +144,15 @@ test("Nur das Büro der eigenen Firma rechnet einen Zusatzauftrag einzeln ab, oh
     // Den Zusatzauftrag einer anderen Firma gibt es für sie nicht.
     [firmaB.buero, "P0002"],
   ] as const) {
-    const { error } = await rechneEinzelnAb(await schnittstelleAls(zugang), auftrag);
+    const { error } = await rechneEinzelnAb(await schnittstelleAls(zugang), auftrag, {
+      eintraege,
+    });
     expect(error?.code, zugang.name).toBe(code);
   }
   expect(await abrechnungenVon(auftrag.kundeId)).toEqual([]);
 
   const alsBuero = await schnittstelleAls(buero);
-  const { data: id, error } = await rechneEinzelnAb(alsBuero, auftrag);
+  const { data: id, error } = await rechneEinzelnAb(alsBuero, auftrag, { eintraege });
   expect(error).toBeNull();
   expect(await abrechnungenVon(auftrag.kundeId)).toEqual([
     {
@@ -155,7 +168,7 @@ test("Nur das Büro der eigenen Firma rechnet einen Zusatzauftrag einzeln ab, oh
   // nach Stunden wird nicht selbst markiert.
   expect(
     await abgerechnetIn([auftrag.februar, auftrag.maerz, auftrag.regulaer, auftrag.offen]),
-  ).toEqual([id, id, null, null]);
+  ).toEqual([id, id, null, id]);
   expect(await zusatzauftragAbgerechnetIn(auftrag.zusatzauftragId)).toBeNull();
 
   // Die Liste der Abrechnungen nennt den Zusatzauftrag, nur fürs Büro.
@@ -187,16 +200,23 @@ test("Einzeln abgerechnet wird nur ein erledigter Zusatzauftrag, mit genau seine
   const fremd = await zusatzauftragMitZeit(firmaA.id);
   const alsBuero = await schnittstelleAls(await legeEigenenZugangAn(firmaA.id, "buero"));
 
+  // Nach Stunden erst, wenn alle seine Zeit freigegeben ist: Später
+  // freigegebene Zeit brächte dem Kunden sonst eine zweite Rechnung.
+  const vorDerFreigabe = await rechneEinzelnAb(alsBuero, auftrag);
+  expect(vorDerFreigabe.error?.code).toBe("23514");
+  expect(await abrechnungenVon(auftrag.kundeId)).toEqual([]);
+  await gibFrei(auftrag.offen);
+  const alle = [auftrag.februar, auftrag.maerz, auftrag.offen];
+
   // Was nicht passt, lehnt die Datenbank ab und speichert nichts.
   const falsch = [
     { welcher: offenerAuftrag.zusatzauftragId, eintraege: [offenerAuftrag.februar] },
     // Vergessen: der Februar-Eintrag.
-    { eintraege: [auftrag.maerz] },
+    { eintraege: [auftrag.maerz, auftrag.offen] },
     { eintraege: [] },
-    // Zu viel: noch nicht freigegeben, regulär, von einem anderen Auftrag.
-    { eintraege: [auftrag.februar, auftrag.maerz, auftrag.offen] },
-    { eintraege: [auftrag.februar, auftrag.maerz, auftrag.regulaer] },
-    { eintraege: [auftrag.februar, auftrag.maerz, fremd.maerz] },
+    // Zu viel: regulär, von einem anderen Auftrag.
+    { eintraege: [...alle, auftrag.regulaer] },
+    { eintraege: [...alle, fremd.maerz] },
   ];
   for (const auswahl of falsch) {
     const { error } = await rechneEinzelnAb(alsBuero, auftrag, auswahl);
@@ -211,9 +231,9 @@ test("Einzeln abgerechnet wird nur ein erledigter Zusatzauftrag, mit genau seine
   ]);
 
   // Ein zweites Mal geht nicht: Es ist nichts mehr offen.
-  const { data: id, error } = await rechneEinzelnAb(alsBuero, auftrag);
+  const { data: id, error } = await rechneEinzelnAb(alsBuero, auftrag, { eintraege: alle });
   expect(error).toBeNull();
-  const nochmal = await rechneEinzelnAb(alsBuero, auftrag);
+  const nochmal = await rechneEinzelnAb(alsBuero, auftrag, { eintraege: alle });
   expect(nochmal.error?.code).toBe("23514");
   const leer = await rechneEinzelnAb(alsBuero, auftrag, { eintraege: [] });
   expect(leer.error?.code).toBe("23514");
@@ -237,6 +257,12 @@ test("Ein einzeln abgerechneter Festbetrag ist gesperrt und nach der Rücknahme 
   const auftrag = await zusatzauftragMitZeit(firmaA.id, { festbetragCent: 89000 });
   const alsBuero = await schnittstelleAls(await legeEigenenZugangAn(firmaA.id, "buero"));
 
+  // Beim Festbetrag darf Zeit noch offen sein; sie gehört zum Betrag, wird
+  // aber erst freigegeben abgerechnet.
+  const mitOffenem = await rechneEinzelnAb(alsBuero, auftrag, {
+    eintraege: [auftrag.februar, auftrag.maerz, auftrag.offen],
+  });
+  expect(mitOffenem.error?.code).toBe("23514");
   const { data: id, error } = await rechneEinzelnAb(alsBuero, auftrag);
   expect(error).toBeNull();
   expect(await zusatzauftragAbgerechnetIn(auftrag.zusatzauftragId)).toBe(id);
@@ -283,11 +309,7 @@ test("Ein einzeln abgerechneter Festbetrag ist gesperrt und nach der Rücknahme 
 
   // Danach lässt er sich wieder einzeln abrechnen, mit der inzwischen
   // freigegebenen Zeit.
-  const freigabe = await dienstZugang()!
-    .from("zeiteintrag")
-    .update({ freigegeben_am: "2026-04-02T08:00:00Z" })
-    .eq("id", auftrag.offen);
-  if (freigabe.error) throw freigabe.error;
+  await gibFrei(auftrag.offen);
   const neu = await rechneEinzelnAb(alsBuero, auftrag, {
     eintraege: [auftrag.februar, auftrag.maerz, auftrag.offen],
   });

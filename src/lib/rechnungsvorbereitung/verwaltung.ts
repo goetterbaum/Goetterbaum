@@ -184,7 +184,10 @@ type EinzelnerZusatzauftragZeile = ZusatzauftragZeile & {
 };
 
 // Dazu Kunde und Zusatzauftrag. abgerechnetIn ist die gültige Abrechnung
-// eines Festbetrags, sonst null.
+// eines Festbetrags, sonst null. wartetAufFreigabe: Nach Stunden lässt er
+// sich erst abrechnen, wenn alle seine Zeit freigegeben ist; später
+// freigegebene Zeit brächte dem Kunden sonst eine zweite Rechnung. Das
+// prüft auch die Datenbank.
 export type RechnungsvorbereitungFuerZusatzauftrag = GeladeneRechnungsvorbereitung & {
   kunde: Kunde;
   zusatzauftrag: {
@@ -192,6 +195,7 @@ export type RechnungsvorbereitungFuerZusatzauftrag = GeladeneRechnungsvorbereitu
     beschreibung: string;
     erledigt: boolean;
     abgerechnetIn: string | null;
+    wartetAufFreigabe: boolean;
   };
 };
 
@@ -273,6 +277,7 @@ export async function ladeRechnungsvorbereitungFuerZusatzauftrag(
       beschreibung: za.beschreibung,
       erledigt: za.erledigt,
       abgerechnetIn: za.abgerechnet_in,
+      wartetAufFreigabe: za.abrechnungsart === "stunden" && nichtFreigegeben > 0,
     },
   };
 }

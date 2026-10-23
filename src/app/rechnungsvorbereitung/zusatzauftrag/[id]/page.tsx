@@ -80,7 +80,13 @@ function Ergebnis({ geladen }: { geladen: RechnungsvorbereitungFuerZusatzauftrag
       <h2>{t.ueberschrift(kunde.name, zusatzauftrag.beschreibung)}</h2>
       <p>{t.einzelnHinweis}</p>
       <p>{t.rundungsregel(texte.rundungsregeln[geladen.rundungsregel])}</p>
-      {nichtFreigegeben > 0 && <p role="alert">{t.einzelnNichtFreigegeben(nichtFreigegeben)}</p>}
+      {nichtFreigegeben > 0 && (
+        <p role="alert">
+          {zusatzauftrag.wartetAufFreigabe
+            ? t.einzelnWartetAufFreigabe(nichtFreigegeben)
+            : t.einzelnNichtFreigegeben(nichtFreigegeben)}
+        </p>
+      )}
       {zeilen.zeilen.length === 0 ? (
         <p>
           {zusatzauftrag.abgerechnetIn !== null
@@ -98,16 +104,20 @@ function Ergebnis({ geladen }: { geladen: RechnungsvorbereitungFuerZusatzauftrag
               {t.csvExport}
             </a>
           </p>
-          <p>{t.einzelnHinweisMarkieren}</p>
-          <AktionsKnopf
-            aktion={zusatzauftragEinzelnAbrechnen.bind(
-              null,
-              zusatzauftrag.id,
-              abrechnungsStand(geladen.ergebnis),
-            )}
-            knopf={t.alsAbgerechnetMarkieren}
-            knopfLaeuft={t.markierenLaeuft}
-          />
+          {!zusatzauftrag.wartetAufFreigabe && (
+            <>
+              <p>{t.einzelnHinweisMarkieren}</p>
+              <AktionsKnopf
+                aktion={zusatzauftragEinzelnAbrechnen.bind(
+                  null,
+                  zusatzauftrag.id,
+                  abrechnungsStand(geladen.ergebnis),
+                )}
+                knopf={t.alsAbgerechnetMarkieren}
+                knopfLaeuft={t.markierenLaeuft}
+              />
+            </>
+          )}
         </>
       )}
     </>

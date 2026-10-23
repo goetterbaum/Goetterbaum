@@ -554,6 +554,13 @@ export const texte = {
       anzahl === 1
         ? "Achtung: 1 Zeiteintrag dieses Zusatzauftrags ist noch nicht freigegeben. Er fehlt in der Rechnungsvorbereitung."
         : `Achtung: ${anzahl} Zeiteinträge dieses Zusatzauftrags sind noch nicht freigegeben. Sie fehlen in der Rechnungsvorbereitung.`,
+    einzelnWartetAufFreigabe: (anzahl: number) =>
+      (anzahl === 1
+        ? "1 Zeiteintrag dieses Zusatzauftrags ist noch nicht freigegeben."
+        : `${anzahl} Zeiteinträge dieses Zusatzauftrags sind noch nicht freigegeben.`) +
+      " Einzeln abrechnen lässt sich ein Zusatzauftrag nach Stunden erst, wenn alle seine Zeiteinträge freigegeben sind.",
+    fehlerWartetAufFreigabe:
+      "Es sind noch nicht alle Zeiteinträge dieses Zusatzauftrags freigegeben. Bitte gib sie zuerst frei.",
     einzelnNichtErledigt:
       "Dieser Zusatzauftrag ist noch offen. Einzeln abrechnen lässt er sich erst, wenn er als erledigt markiert ist.",
     einzelnSchonAbgerechnet: "Dieser Zusatzauftrag ist schon abgerechnet.",

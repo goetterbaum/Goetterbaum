@@ -55,9 +55,10 @@ export async function alsAbgerechnetMarkieren(
 
 // Rechnet einen erledigten Zusatzauftrag einzeln ab, mit seiner
 // freigegebenen, noch offenen Zeit aus allen Monaten. Wie beim Markieren
-// oben ist stand der Fingerabdruck dessen, was das Büro gesehen hat; dass
-// der Zusatzauftrag erledigt und noch offen ist und keine Zeit fehlt,
-// prüft zusätzlich die Datenbank.
+// oben ist stand der Fingerabdruck dessen, was das Büro gesehen hat. Nach
+// Stunden geht es erst, wenn alle seine Zeit freigegeben ist. Dass der
+// Zusatzauftrag erledigt und noch offen ist und keine Zeit fehlt, prüft
+// zusätzlich die Datenbank.
 export async function zusatzauftragEinzelnAbrechnen(
   zusatzauftragId: string,
   stand: string,
@@ -73,6 +74,10 @@ export async function zusatzauftragEinzelnAbrechnen(
   if (abrechnungsStand(geladen.ergebnis) !== stand) {
     refresh();
     return FEHLER(t.fehlerVeraendert);
+  }
+  if (geladen.zusatzauftrag.wartetAufFreigabe) {
+    refresh();
+    return FEHLER(t.fehlerWartetAufFreigabe);
   }
   const umfang = abrechnungsUmfang(geladen.ergebnis);
   if (!umfang) return FEHLER(t.einzelnNichtsAbzurechnen);

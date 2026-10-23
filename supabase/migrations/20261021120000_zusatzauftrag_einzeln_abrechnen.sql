@@ -10,9 +10,10 @@
 --
 -- Ein Zusatzauftrag nach Stunden wird dabei nicht selbst als abgerechnet
 -- markiert, nur seine Zeit (wie in der regulären Abrechnung). So bleibt
--- Zeit, die erst später freigegeben wird oder durch die Rücknahme einer
--- anderen Abrechnung wieder offen ist, abrechenbar und geht nicht
--- verloren.
+-- Zeit, die durch die Rücknahme einer anderen Abrechnung wieder offen ist,
+-- abrechenbar und geht nicht verloren. Damit der Kunde für denselben
+-- Auftrag nicht später eine zweite Rechnung bekommt, lässt er sich erst
+-- einzeln abrechnen, wenn alle seine Zeiteinträge freigegeben sind.
 --
 -- Zurückgenommen wird wie jede Abrechnung über abrechnung_zuruecknehmen;
 -- die Funktion leert schon alle Verweise und bleibt unverändert.
@@ -56,8 +57,9 @@ comment on table public.abrechnung is
 -- der neuen Abrechnung zurück. Positionen und Summe kommen aus dem
 -- Rechenbaustein der App; nachgerechnet wird hier nicht. Die Datenbank
 -- prüft: Der Zusatzauftrag gehört zur eigenen Firma, ist erledigt und
--- (bei Festbetrag) noch nicht abgerechnet. Die übergebenen Zeiteinträge
--- sind genau die freigegebenen, noch nicht abgerechneten des
+-- (bei Festbetrag) noch nicht abgerechnet; nach Stunden hat er keinen
+-- Zeiteintrag mehr, der noch nicht freigegeben ist. Die übergebenen
+-- Zeiteinträge sind genau die freigegebenen, noch nicht abgerechneten des
 -- Zusatzauftrags: keiner zu viel und keiner vergessen. Passt etwas nicht,
 -- wird nichts gespeichert.
 create function public.zusatzauftrag_einzeln_abrechnen(
@@ -110,6 +112,16 @@ begin
   eintraege := array(select distinct e from unnest(coalesce(eintraege, '{}')) e);
   if auftrag.abrechnungsart = 'stunden' and cardinality(eintraege) = 0 then
     raise exception 'Es gibt nichts abzurechnen.' using errcode = 'check_violation';
+  end if;
+  if auftrag.abrechnungsart = 'stunden' and exists (
+    select 1
+    from public.zeiteintrag z
+    where z.zusatzauftrag_id = welcher
+      and z.firma_id = firma
+      and z.freigegeben_am is null
+  ) then
+    raise exception 'Mindestens ein Zeiteintrag des Zusatzauftrags ist noch nicht freigegeben.'
+      using errcode = 'check_violation';
   end if;
 
   insert into public.abrechnung
