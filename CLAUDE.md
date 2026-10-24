@@ -23,7 +23,7 @@ Erstes Kernfeature ist die objektbezogene Zeiterfassung der Mitarbeiter vor Ort,
 - Neue Features starten mit /grill-with-docs, nie direkt mit Code.
 - Gebaut wird nur, was als Ticket auf GitHub steht, mit /implement.
 - Nie direkt auf main: ein Ticket = ein Branch = ein Pull Request.
-- Jede PR-Beschreibung enthält: Was ändert sich für Nutzer? Wie teste ich es? Welche Risiken?
+- PR-Beschreibungen folgen dem Skill `mattpocock-skills:pr` (Summary, Evidence, Merge Danger), in der jeweils installierten Fassung. Text auf Deutsch, in einfacher Sprache; kleinere Entscheidungen am Ende unter „Kleinere Entscheidungen“.
 
 # Ohne meine Zustimmung nie
 
@@ -32,7 +32,7 @@ Erstes Kernfeature ist die objektbezogene Zeiterfassung der Mitarbeiter vor Ort,
 - Tests löschen oder abschwächen
 - Passwörter oder Schlüssel in den Code schreiben (nur Umgebungsvariablen)
 
-Was ein Ticket mit dem Label `ready-for-agent` ausdrücklich verlangt, gilt als zugestimmt, auch Schema- und Rechteänderungen. Bestehende Tests, deren Verhalten das Ticket ändert, werden angepasst, nicht gelöscht. Jede solche Änderung steht im PR unter „Welche Risiken?“.
+Was ein Ticket mit dem Label `ready-for-agent` ausdrücklich verlangt, gilt als zugestimmt, auch Schema- und Rechteänderungen. Bestehende Tests, deren Verhalten das Ticket ändert, werden angepasst, nicht gelöscht. Jede solche Änderung steht im PR unter „Merge Danger“.
 
 ## Agent skills
 
