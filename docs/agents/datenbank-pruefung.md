@@ -12,4 +12,4 @@ Auf dem Firmenlaptop gibt es kein Docker (Lizenz- und IT-Vorgaben). Supabase lä
 
 - Lokal prüfbar sind nur `bash scripts/pruefe-migrationen.sh` (begin/commit) und die Einzeltests. Datenbank-Logik deshalb besonders sorgfältig lesen und jede Regel mit einem Rechte-Test abdecken.
 - Eine Migration ist nach dem ersten Push auf Staging eingespielt. `db push` spielt dieselbe Datei nie erneut ein, auch wenn sie sich geändert hat. Korrekturen nach dem ersten Push kommen in eine **neue** Migrationsdatei.
-- Die PR-Beschreibung nennt unter „Wie teste ich es?“, dass die Datenbank-Regeln erst in der CI laufen.
+- Die PR-Beschreibung nennt unter „Evidence“, dass die Datenbank-Regeln erst in der CI laufen.
