@@ -159,6 +159,20 @@ test("Büro legt beim Objekt einen Stundensatz fest, die Rechnungsvorbereitung r
   );
   await page.goto(`/kunden/${kunde.kundeId}`);
   await expect(page.getByText("Abweichende Sätze in:", { exact: false })).toHaveCount(0);
+
+  // Wer einen vorhandenen Objektsatz auf den Satz des Kunden setzt,
+  // entfernt ihn damit.
+  await page.goto(`/objekte/${kunde.stundenObjektId}`);
+  await satzFeld.fill("31");
+  await zeile.getByRole("button", { name: "Festlegen" }).click();
+  await expect(zeile).toContainText("31,00 € (Objekt)");
+  await satzFeld.fill("28");
+  await zeile.getByRole("button", { name: "Festlegen" }).click();
+  await expect(zeile.getByRole("status")).toHaveText(
+    "Entspricht dem Satz des Kunden bzw. dem Standard. Der eigene Objektsatz wurde entfernt.",
+  );
+  await expect(zeile).toContainText("28,00 € (Kunde)");
+  expect(await gespeicherteObjektSaetze(kunde.stundenObjektId)).toEqual([]);
 });
 
 test("Auch ein Pauschal-Objekt hat Stundensätze, mit Hinweis auf die Zusatzaufträge nach Stunden", async ({

@@ -181,7 +181,7 @@ export function rechnungsvorbereitung(eingabe: Eingabe): Rechnungsvorbereitung {
     const regulaer = berechneteTage.filter(
       (tag) => tag.objektId === objekt.id && tag.zusatzauftragId === null,
     );
-    for (const stunden of stundenJeTaetigkeit(regulaer, eingabe)) {
+    for (const stunden of stundenJeTaetigkeit(regulaer, objekt.id, eingabe)) {
       positionen.push({ art: "stunden", objektId: objekt.id, ...stunden });
     }
   }
@@ -195,7 +195,7 @@ export function rechnungsvorbereitung(eingabe: Eingabe): Rechnungsvorbereitung {
       continue;
     }
     const fuerAuftrag = berechneteTage.filter((tag) => tag.zusatzauftragId === zusatzauftragId);
-    for (const stunden of stundenJeTaetigkeit(fuerAuftrag, eingabe)) {
+    for (const stunden of stundenJeTaetigkeit(fuerAuftrag, objektId, eingabe)) {
       positionen.push({ art: "zusatzauftrag-stunden", zusatzauftragId, objektId, ...stunden });
     }
   }
@@ -263,7 +263,7 @@ export function rechnungsvorbereitungFuerZusatzauftrag(
       a.datum.localeCompare(b.datum) ||
       taetigkeitStelle(a.taetigkeitId) - taetigkeitStelle(b.taetigkeitId),
   );
-  const positionen: Position[] = stundenJeTaetigkeit(tage, eingabe).map((stunden) => ({
+  const positionen: Position[] = stundenJeTaetigkeit(tage, objektId, eingabe).map((stunden) => ({
     art: "zusatzauftrag-stunden",
     zusatzauftragId,
     objektId,
@@ -277,19 +277,20 @@ export function rechnungsvorbereitungFuerZusatzauftrag(
   };
 }
 
-// Die Stunden je Tätigkeit aus den Tagen einer Position, in der
-// Reihenfolge der Tätigkeiten. Alle Tage einer Position liegen im selben
-// Objekt.
+// Die Stunden je Tätigkeit aus den Tagen einer Position im Objekt, in der
+// Reihenfolge der Tätigkeiten.
 function stundenJeTaetigkeit(
   tage: GerundeterTag[],
+  objektId: string,
   { taetigkeiten, objektStundensaetze }: Pick<Eingabe, "taetigkeiten" | "objektStundensaetze">,
 ): Stunden[] {
   return taetigkeiten.flatMap((taetigkeit) => {
-    const fuerTaetigkeit = tage.filter((tag) => tag.taetigkeitId === taetigkeit.id);
-    const minuten = fuerTaetigkeit.reduce((summe, tag) => summe + tag.minuten, 0);
+    const minuten = tage
+      .filter((tag) => tag.taetigkeitId === taetigkeit.id)
+      .reduce((summe, tag) => summe + tag.minuten, 0);
     if (minuten === 0) return [];
     const objektSatz = objektStundensaetze.find(
-      (s) => s.objektId === fuerTaetigkeit[0].objektId && s.taetigkeitId === taetigkeit.id,
+      (s) => s.objektId === objektId && s.taetigkeitId === taetigkeit.id,
     );
     const { stundensatzCent } = geltenderStundensatz({
       standardCent: taetigkeit.standardStundensatzCent,

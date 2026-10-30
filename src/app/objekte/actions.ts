@@ -11,8 +11,8 @@ import { ladeObjekt } from "@/lib/objekte/verwaltung";
 import { istId } from "@/lib/id";
 import { FEHLER, OK, type Rueckmeldung } from "@/lib/rueckmeldung";
 import { pruefeStundensatzEingabe } from "@/lib/stundensaetze/eingabe";
-import { objektsatzNoetig } from "@/lib/stundensaetze/regeln";
-import { ladeKundenStundensaetze } from "@/lib/stundensaetze/verwaltung";
+import { objektsatzFestlegen } from "@/lib/stundensaetze/regeln";
+import { ladeKundenStundensaetze, ladeObjektStundensaetze } from "@/lib/stundensaetze/verwaltung";
 import { ladeTaetigkeit } from "@/lib/taetigkeiten/verwaltung";
 import { texte } from "@/texte";
 
@@ -105,7 +105,8 @@ const SATZ_GIBT_ES_SCHON = "23505";
 
 // Legt den Stundensatz des Objekts für eine Tätigkeit fest oder ändert
 // ihn. Gleicht er dem Satz, der ohne ihn gälte (Kunde, sonst Standard),
-// wird nichts gespeichert, damit das Objekt dem Kunden weiter folgt.
+// wird nichts gespeichert und ein vorhandener Objektsatz entfernt, damit
+// das Objekt dem Kunden folgt.
 export async function objektStundensatzFestlegen(
   objektId: string,
   _vorher: Rueckmeldung,
@@ -118,21 +119,27 @@ export async function objektStundensatzFestlegen(
   const eingabe = pruefeStundensatzEingabe(formData);
   if (!eingabe.ok) return FEHLER(eingabe.fehler);
   const { taetigkeit_id, stundensatz_cent } = eingabe.daten;
-  const [taetigkeit, kundenSaetze] = await Promise.all([
+  const [taetigkeit, kundenSaetze, objektSaetze] = await Promise.all([
     ladeTaetigkeit(supabase, taetigkeit_id),
     ladeKundenStundensaetze(supabase, objekt.kunde_id),
+    ladeObjektStundensaetze(supabase, [objekt.id]),
   ]);
   if (!taetigkeit) return FEHLER(texte.stundensaetze.fehlerTaetigkeit);
   if (taetigkeit.archiviert) {
     return FEHLER(texte.stundensaetze.fehlerTaetigkeitArchiviert);
   }
-  const kundenSatz = kundenSaetze.find((s) => s.taetigkeit_id === taetigkeit_id);
-  const noetig = objektsatzNoetig(stundensatz_cent, {
+  const satzFuer = (saetze: { taetigkeit_id: string; stundensatz_cent: number }[]) =>
+    saetze.find((s) => s.taetigkeit_id === taetigkeit_id)?.stundensatz_cent ?? null;
+  const was = objektsatzFestlegen(stundensatz_cent, {
     standardCent: taetigkeit.standard_stundensatz_cent,
-    kundeCent: kundenSatz?.stundensatz_cent ?? null,
-    objektCent: null,
+    kundeCent: satzFuer(kundenSaetze),
+    objektCent: satzFuer(objektSaetze),
   });
-  if (!noetig) return OK(texte.objektStundensaetze.unveraendert);
+  if (was === "nichts") return OK(texte.objektStundensaetze.unveraendert);
+  if (was === "entfernen") {
+    const entfernt = await entferneObjektStundensatz(supabase, objekt.id, taetigkeit_id);
+    return entfernt.fehler ? entfernt : OK(texte.objektStundensaetze.entferntWeilGleich);
+  }
 
   // Erst ändern, und nur wenn es noch keinen Satz gab, neu anlegen. Ein
   // "upsert" ginge nicht: Das Büro darf Objekt und Tätigkeit eines
@@ -176,11 +183,19 @@ export async function objektStundensatzEntfernen(
   const objekt = await ladeObjekt(supabase, objektId);
   if (!objekt) return FEHLER(texte.objekte.nichtGefunden);
   if (!istId(taetigkeitId)) return FEHLER(texte.stundensaetze.fehlerTaetigkeit);
+  return entferneObjektStundensatz(supabase, objekt.id, taetigkeitId);
+}
 
+// Nur nach der Prüfung von Büro und Objekt aufrufen.
+async function entferneObjektStundensatz(
+  supabase: SupabaseClient,
+  objektId: string,
+  taetigkeitId: string,
+): Promise<Rueckmeldung> {
   const { error } = await supabase
     .from("objekt_stundensatz")
     .delete()
-    .eq("objekt_id", objekt.id)
+    .eq("objekt_id", objektId)
     .eq("taetigkeit_id", taetigkeitId);
   if (error) {
     console.error("Objekt-Stundensatz entfernen fehlgeschlagen", error);

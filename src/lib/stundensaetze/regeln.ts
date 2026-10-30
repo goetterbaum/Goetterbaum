@@ -24,11 +24,15 @@ export function geltenderStundensatz(saetze: Stundensaetze): {
   return { stundensatzCent: saetze.standardCent, herkunft: "standard" };
 }
 
-// Ob sich ein eigener Objektsatz lohnt. Gleicht er dem Satz, der ohne ihn
-// gälte (Kunde, sonst Standard), wird er nicht gespeichert: Sonst bliebe
-// das Objekt bei einer späteren Preisänderung beim Kunden unbemerkt beim
-// alten Preis.
-export function objektsatzNoetig(stundensatzCent: number, saetze: Stundensaetze): boolean {
-  const bisher = geltenderStundensatz({ ...saetze, objektCent: null });
-  return stundensatzCent !== bisher.stundensatzCent;
+// Was mit einem eingegebenen Objektsatz geschieht. Gleicht er dem Satz,
+// der ohne ihn gälte (Kunde, sonst Standard), wird er nicht gespeichert
+// und ein vorhandener Objektsatz entfernt: Sonst bliebe das Objekt bei
+// einer späteren Preisänderung beim Kunden unbemerkt beim alten Preis.
+export function objektsatzFestlegen(
+  stundensatzCent: number,
+  saetze: Stundensaetze,
+): "speichern" | "nichts" | "entfernen" {
+  const ohneObjektsatz = geltenderStundensatz({ ...saetze, objektCent: null });
+  if (stundensatzCent !== ohneObjektsatz.stundensatzCent) return "speichern";
+  return saetze.objektCent === null ? "nichts" : "entfernen";
 }

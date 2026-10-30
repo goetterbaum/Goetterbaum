@@ -28,24 +28,24 @@ export async function ObjektStundensaetze({
   const kundenSatzFuer = new Map(kundenSaetze.map((s) => [s.taetigkeit_id, s.stundensatz_cent]));
   const objektSatzFuer = new Map(objektSaetze.map((s) => [s.taetigkeit_id, s.stundensatz_cent]));
   const zeilen = taetigkeiten.filter((t) => !t.archiviert || objektSatzFuer.has(t.id));
-  const t = texte.stundensaetze;
+  const text = texte.stundensaetze;
 
   return (
     <>
-      <h2>{t.titel}</h2>
+      <h2>{text.titel}</h2>
       <p>{texte.objektStundensaetze.hinweis}</p>
       {objekt.abrechnungsart === "pauschale" && <p>{texte.objektStundensaetze.hinweisPauschale}</p>}
       {zeilen.length === 0 ? (
-        <p>{t.keineTaetigkeiten}</p>
+        <p>{text.keineTaetigkeiten}</p>
       ) : (
         <table>
           <thead>
             <tr>
-              <th>{t.spalteTaetigkeit}</th>
-              <th>{t.spalteStandard}</th>
+              <th>{text.spalteTaetigkeit}</th>
+              <th>{text.spalteStandard}</th>
               <th>{texte.objektStundensaetze.spalteKunde}</th>
               <th>{texte.objektStundensaetze.spalteObjekt}</th>
-              <th>{t.spalteGilt}</th>
+              <th>{text.spalteGilt}</th>
               <th />
             </tr>
           </thead>
@@ -84,8 +84,8 @@ export async function ObjektStundensaetze({
                     {objektCent !== null && (
                       <AktionsKnopf
                         aktion={objektStundensatzEntfernen.bind(null, objekt.id, taetigkeit.id)}
-                        knopf={t.entfernen}
-                        knopfLaeuft={t.entfernenLaeuft}
+                        knopf={text.entfernen}
+                        knopfLaeuft={text.entfernenLaeuft}
                       />
                     )}
                   </td>

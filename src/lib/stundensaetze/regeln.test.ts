@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { geltenderStundensatz, objektsatzNoetig } from "./regeln";
+import { geltenderStundensatz, objektsatzFestlegen } from "./regeln";
 
 // Glasreinigung kostet standardmäßig 38,00 €.
 const OHNE_ABSPRACHE = { standardCent: 3800, kundeCent: null, objektCent: null };
@@ -29,15 +29,19 @@ test("Ein Stundensatz des Objekts hat Vorrang vor Kunde und Standard", () => {
   });
 });
 
-test("Ein Objektsatz gleich dem bisherigen Satz (Kunde, sonst Standard) ist nicht nötig", () => {
-  expect(objektsatzNoetig(3400, { ...OHNE_ABSPRACHE, kundeCent: 3400 })).toBe(false);
-  expect(objektsatzNoetig(3800, OHNE_ABSPRACHE)).toBe(false);
+test("Ein Objektsatz gleich dem bisherigen Satz (Kunde, sonst Standard) wird nicht gespeichert", () => {
+  expect(objektsatzFestlegen(3400, { ...OHNE_ABSPRACHE, kundeCent: 3400 })).toBe("nichts");
+  expect(objektsatzFestlegen(3800, OHNE_ABSPRACHE)).toBe("nichts");
   // Der Standard zählt nicht, wenn der Kunde einen eigenen Satz hat.
-  expect(objektsatzNoetig(3800, { ...OHNE_ABSPRACHE, kundeCent: 3400 })).toBe(true);
-  expect(objektsatzNoetig(3150, { ...OHNE_ABSPRACHE, kundeCent: 3400 })).toBe(true);
-  // Ein vorhandener Objektsatz ist nicht der bisherige: Wer den Kundensatz
-  // eintippt, soll den Objektsatz entfernen statt ihn zu kopieren.
-  expect(objektsatzNoetig(3150, { standardCent: 3800, kundeCent: 3400, objektCent: 3150 })).toBe(
-    true,
-  );
+  expect(objektsatzFestlegen(3800, { ...OHNE_ABSPRACHE, kundeCent: 3400 })).toBe("speichern");
+  expect(objektsatzFestlegen(3150, { ...OHNE_ABSPRACHE, kundeCent: 3400 })).toBe("speichern");
+});
+
+test("Ein vorhandener Objektsatz wird geändert oder, auf den bisherigen Satz gesetzt, entfernt", () => {
+  const mitObjektsatz = { standardCent: 3800, kundeCent: 3400, objektCent: 3150 };
+  expect(objektsatzFestlegen(3150, mitObjektsatz)).toBe("speichern");
+  expect(objektsatzFestlegen(3290, mitObjektsatz)).toBe("speichern");
+  // Auf den Satz des Kunden gesetzt, folgt das Objekt wieder dem Kunden.
+  expect(objektsatzFestlegen(3400, mitObjektsatz)).toBe("entfernen");
+  expect(objektsatzFestlegen(3800, { ...OHNE_ABSPRACHE, objektCent: 3150 })).toBe("entfernen");
 });

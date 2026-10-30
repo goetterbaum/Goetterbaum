@@ -242,6 +242,8 @@ export const texte = {
     gilt: (betrag: string, herkunft: Herkunft) => `${betrag} (${HERKUNFT[herkunft]})`,
     stundensatzFuer: (taetigkeit: string) => `Stundensatz des Objekts für ${taetigkeit} in Euro`,
     unveraendert: "Entspricht dem bisherigen Satz, kein eigener Objektsatz nötig.",
+    entferntWeilGleich:
+      "Entspricht dem Satz des Kunden bzw. dem Standard. Der eigene Objektsatz wurde entfernt.",
   },
   zusatzauftraege: {
     titel: "Zusatzaufträge",
