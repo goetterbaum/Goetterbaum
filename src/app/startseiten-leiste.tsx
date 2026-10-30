@@ -14,12 +14,15 @@ export function StartseitenLeiste() {
   if (OHNE_LEISTE.includes(usePathname())) return null;
 
   return (
-    <nav className={styles.leiste}>
-      <Link href="/" className={styles.link}>
-        <HausSymbol />
-        {texte.leiste.startseite}
-      </Link>
-    </nav>
+    <>
+      <nav className={styles.leiste}>
+        <Link href="/" className={styles.link}>
+          <HausSymbol />
+          {texte.leiste.startseite}
+        </Link>
+      </nav>
+      <div className={styles.platzhalter} />
+    </>
   );
 }
 
