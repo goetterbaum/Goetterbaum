@@ -1,6 +1,6 @@
 // Bereitet die eigenen Zeiteinträge für die Anzeige am Handy auf. Tage
 // und Uhrzeiten gelten in Berlin, egal wo der Server läuft.
-import { berlinerDatum, berlinerMitternacht } from "@/lib/berliner-zeit";
+import { aufBerlinerTageVerteilt, berlinerDatum, berlinerMitternacht } from "@/lib/berliner-zeit";
 import { stundenAlsText } from "@/lib/rechnungsvorbereitung/zeilen";
 import { texte } from "@/texte";
 
@@ -123,10 +123,11 @@ export function angezeigtAb(jetzt: number): string {
 }
 
 // Tag und von – bis eines Eintrags in einer Zeile, z. B. für die Freigabe.
-// Ein laufender Eintrag hat statt des Endes laeuft.
-export function tagUndZeit(beginn: string, ende: string | null, laeuft: string): string {
+// Ein laufender Eintrag hat statt des Endes ohneEnde („läuft“ oder
+// „unvollständig“).
+export function tagUndZeit(beginn: string, ende: string | null, ohneEnde: string): string {
   const von = Date.parse(beginn);
-  const bis = ende === null ? laeuft : uhrzeit.format(Date.parse(ende));
+  const bis = ende === null ? ohneEnde : uhrzeit.format(Date.parse(ende));
   return `${tagesTitel.format(von)}, ${texte.erfassung.vonBis(uhrzeit.format(von), bis)}`;
 }
 
@@ -141,21 +142,19 @@ const datumMitJahr = new Intl.DateTimeFormat("de-DE", {
 export type Spalten = { datum: string; arbeitszeit: string; dauer: string };
 
 // Ein Eintrag für die Spalten Datum, Arbeitszeit und Dauer in der
-// Übersicht im Büro. Ein laufender Eintrag hat statt des Endes laeuft und
-// keine Dauer.
-export function spalten(beginn: string, ende: string | null, laeuft: string): Spalten {
+// Übersicht im Büro. Ein laufender Eintrag hat statt des Endes ohneEnde
+// („läuft“ oder „unvollständig“) und keine Dauer.
+export function spalten(beginn: string, ende: string | null, ohneEnde: string): Spalten {
   const von = Date.parse(beginn);
   const datum = datumMitJahr.format(von);
   if (ende === null) {
-    return { datum, arbeitszeit: texte.erfassung.vonBis(uhrzeit.format(von), laeuft), dauer: "" };
+    return { datum, arbeitszeit: texte.erfassung.vonBis(uhrzeit.format(von), ohneEnde), dauer: "" };
   }
   const bis = Date.parse(ende);
   const arbeitszeit = texte.erfassung.vonBis(uhrzeit.format(von), uhrzeit.format(bis));
-  // Wie viele Kalendertage in Berlin das Ende nach dem Beginn liegt. Eine
-  // Millisekunde vor dem Ende gemessen, damit ein Ende um genau 00:00 noch
-  // zum Vortag zählt.
-  const folgetage =
-    (Date.parse(berlinerDatum(bis - 1)) - Date.parse(berlinerDatum(von))) / (24 * 60 * 60 * 1000);
+  // An wie vielen Kalendertagen in Berlin nach dem Beginn noch gearbeitet
+  // wurde. Ein Ende um genau 00:00 zählt nicht als weiterer Tag.
+  const folgetage = aufBerlinerTageVerteilt(von, bis).length - 1;
   return {
     datum,
     arbeitszeit:
