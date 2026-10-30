@@ -70,9 +70,6 @@ async function Liste() {
       <p>
         <Link href="/zeiteintraege">{texte.zeiteintraege.zurUebersicht}</Link>
       </p>
-      <p>
-        <Link href="/">{texte.stammdaten.zurStartseite}</Link>
-      </p>
     </>
   );
 }

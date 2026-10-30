@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Suspense } from "react";
 import "./globals.css";
+import { StartseitenLeiste } from "./startseiten-leiste";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,7 +22,14 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="de" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body>{children}</body>
+      <body>
+        {/* Die Leiste hängt von der Adresse ab, die erst beim Aufruf feststeht;
+            ohne Suspense könnte Next.js keine Seite vorab erzeugen. */}
+        <Suspense fallback={null}>
+          <StartseitenLeiste />
+        </Suspense>
+        {children}
+      </body>
     </html>
   );
 }

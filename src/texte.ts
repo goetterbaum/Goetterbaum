@@ -71,7 +71,6 @@ export const texte = {
     keineBerechtigung: "Mitarbeiter verwalten darf nur das Büro.",
     neu: "Neuer Mitarbeiter",
     zurUebersicht: "Zurück zur Übersicht",
-    zurStartseite: "Zur Startseite",
     nichtGefunden: "Diesen Mitarbeiter gibt es nicht.",
     keine: "Noch keine Mitarbeiter angelegt.",
     spalteName: "Name",
@@ -467,6 +466,9 @@ export const texte = {
     system: "System",
     aktionen: { angelegt: "Angelegt", geaendert: "Geändert" },
   },
+  leiste: {
+    startseite: "Startseite",
+  },
   stammdaten: {
     keineBerechtigung: "Kunden und Objekte verwalten darf nur das Büro.",
     archivieren: "Archivieren",
@@ -477,7 +479,6 @@ export const texte = {
     speichern: "Speichern",
     speichernLaeuft: "Wird gespeichert …",
     gespeichert: "Gespeichert.",
-    zurStartseite: "Zur Startseite",
     fehlerUnbekannt:
       "Das hat nicht geklappt. Bitte lade die Seite neu und versuche es noch einmal.",
   },

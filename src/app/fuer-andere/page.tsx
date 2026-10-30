@@ -46,9 +46,6 @@ async function Auswahl() {
           </ul>
         </>
       )}
-      <p>
-        <Link href="/">{texte.stammdaten.zurStartseite}</Link>
-      </p>
     </>
   );
 }

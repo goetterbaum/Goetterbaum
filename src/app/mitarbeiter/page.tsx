@@ -56,9 +56,6 @@ async function Liste() {
           </tbody>
         </table>
       )}
-      <p>
-        <Link href="/">{texte.mitarbeiter.zurStartseite}</Link>
-      </p>
     </>
   );
 }

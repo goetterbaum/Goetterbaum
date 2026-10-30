@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Suspense } from "react";
 import { NurFuerBuero } from "@/app/nur-fuer-buero";
 import {
@@ -75,9 +74,6 @@ async function Inhalt({
       )}
       {gewaehlt && !geladen && <p>{t.objektNichtGefunden}</p>}
       {geladen && <Ergebnis geladen={geladen} />}
-      <p>
-        <Link href="/">{texte.stammdaten.zurStartseite}</Link>
-      </p>
     </>
   );
 }

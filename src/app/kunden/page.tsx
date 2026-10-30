@@ -40,9 +40,6 @@ async function Liste() {
           <Tabelle kunden={archivierte} />
         </>
       )}
-      <p>
-        <Link href="/">{texte.stammdaten.zurStartseite}</Link>
-      </p>
     </>
   );
 }

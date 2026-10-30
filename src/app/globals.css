@@ -1,6 +1,8 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Höhe der mitlaufenden Leiste mit dem Button „Startseite“ */
+  --leistenhoehe: 45px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -12,6 +14,8 @@
 
 html {
   height: 100%;
+  /* Wird etwas in den Blick gescrollt, landet es unter der Leiste statt dahinter. */
+  scroll-padding-top: var(--leistenhoehe);
 }
 
 html,

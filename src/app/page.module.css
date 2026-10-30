@@ -1,6 +1,7 @@
 .page {
   display: flex;
-  min-height: 100vh;
+  /* Füllt den Platz unter der Leiste, ohne die Seite länger als den Bildschirm zu machen. */
+  flex: 1;
   align-items: center;
   justify-content: center;
   font-family: var(--font-geist-sans);

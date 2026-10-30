@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Suspense } from "react";
 import { NurFuerBuero } from "@/app/nur-fuer-buero";
 import { ladeFirma } from "@/lib/firma/verwaltung";
@@ -27,9 +26,6 @@ async function Formular({ firmaId }: { firmaId: string }) {
   return (
     <>
       <EinstellungenFormular rundungsregel={firma.rundungsregel} />
-      <p>
-        <Link href="/">{texte.stammdaten.zurStartseite}</Link>
-      </p>
     </>
   );
 }
