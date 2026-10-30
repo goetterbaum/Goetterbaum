@@ -8,6 +8,13 @@ import type {
 } from "@/lib/abrechnung";
 import type { Rolle } from "@/lib/rollen";
 import type { Sparte } from "@/lib/sparte";
+import type { Herkunft } from "@/lib/stundensaetze/regeln";
+
+const HERKUNFT: Record<Herkunft, string> = {
+  standard: "Standard",
+  kunde: "Kunde",
+  objekt: "Objekt",
+};
 
 export const texte = {
   appName: "Götterbaum",
@@ -228,6 +235,19 @@ export const texte = {
     fehlerTaetigkeit: "Bitte wähle eine Tätigkeit.",
     fehlerTaetigkeitArchiviert: "Diese Tätigkeit ist archiviert. Aktiviere sie zuerst wieder.",
     fehlerStundensatz: "Der Stundensatz ist kein gültiger Betrag. Beispiel: 32,50",
+    abweichendIn: (objekte: string[]) => `Abweichende Sätze in: ${objekte.join(", ")}`,
+  },
+  objektStundensaetze: {
+    hinweis:
+      "Ohne eigenen Satz des Objekts gilt der Satz des Kunden, sonst der Standard-Stundensatz. Ein Satz des Objekts hat Vorrang.",
+    hinweisPauschale: "Bei Pauschale nur für Zusatzaufträge nach Stunden.",
+    spalteKunde: "Kunde",
+    spalteObjekt: "Objekt",
+    gilt: (betrag: string, herkunft: Herkunft) => `${betrag} (${HERKUNFT[herkunft]})`,
+    stundensatzFuer: (taetigkeit: string) => `Stundensatz des Objekts für ${taetigkeit} in Euro`,
+    unveraendert: "Entspricht dem bisherigen Satz, kein eigener Objektsatz nötig.",
+    entferntWeilGleich:
+      "Entspricht dem Satz des Kunden bzw. dem Standard. Der eigene Objektsatz wurde entfernt.",
   },
   zusatzauftraege: {
     titel: "Zusatzaufträge",

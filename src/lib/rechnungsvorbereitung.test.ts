@@ -30,6 +30,7 @@ function eingabe(aenderungen: Partial<Eingabe> = {}): Eingabe {
       { id: "reinigung", standardStundensatzCent: 3000, kundenStundensatzCent: null },
       { id: "rasen", standardStundensatzCent: 4000, kundenStundensatzCent: null },
     ],
+    objektStundensaetze: [],
     zusatzauftraege: [],
     zeiteintraege: [],
     abgerechnetePauschalMonate: [],
@@ -140,6 +141,44 @@ test("Der kundenspezifische Stundensatz hat Vorrang vor dem Standard-Stundensatz
     }),
   );
   expect(ergebnis.positionen).toMatchObject([{ stundensatzCent: 2650, betragCent: 5300 }]);
+});
+
+test("Ein Stundensatz des Objekts hat Vorrang vor dem des Kunden, nur in diesem Objekt", () => {
+  const praxis: Objekt = { id: "praxis", abrechnungsart: "stunden", pauschaleCent: null };
+  const ergebnis = rechnungsvorbereitung(
+    eingabe({
+      objekte: [stundenObjekt, praxis],
+      taetigkeiten: [
+        { id: "reinigung", standardStundensatzCent: 3000, kundenStundensatzCent: 2650 },
+      ],
+      objektStundensaetze: [
+        { objektId: "villa", taetigkeitId: "reinigung", stundensatzCent: 2400 },
+      ],
+      zeiteintraege: [
+        eintrag("2026-07-06T08:00:00+02:00", "2026-07-06T10:00:00+02:00"),
+        eintrag("2026-07-06T11:00:00+02:00", "2026-07-06T12:00:00+02:00", { objektId: "praxis" }),
+      ],
+    }),
+  );
+  expect(ergebnis.positionen).toEqual([
+    {
+      art: "stunden",
+      objektId: "villa",
+      taetigkeitId: "reinigung",
+      minuten: 120,
+      stundensatzCent: 2400,
+      betragCent: 4800,
+    },
+    {
+      art: "stunden",
+      objektId: "praxis",
+      taetigkeitId: "reinigung",
+      minuten: 60,
+      stundensatzCent: 2650,
+      betragCent: 2650,
+    },
+  ]);
+  expect(ergebnis.summeCent).toBe(7450);
 });
 
 // Drei Mitarbeiter arbeiten je 1 h 07 min, entweder am selben Tag oder
@@ -590,6 +629,7 @@ function einzeln(
       { id: "reinigung", standardStundensatzCent: 3000, kundenStundensatzCent: null },
       { id: "rasen", standardStundensatzCent: 4000, kundenStundensatzCent: 4500 },
     ],
+    objektStundensaetze: [],
     zeiteintraege,
   };
 }
@@ -752,4 +792,88 @@ test("Einzeln abgerechnet wird nur die Zeit des Zusatzauftrags", () => {
   );
   expect(ergebnis.zeiteintragIds).toEqual(["sturm"]);
   expect(ergebnis.positionen).toMatchObject([{ taetigkeitId: "reinigung", minuten: 60 }]);
+});
+
+test("Ein Zusatzauftrag nach Stunden im Pauschal-Objekt nutzt den Stundensatz des Objekts", () => {
+  const ergebnis = rechnungsvorbereitung(
+    eingabe({
+      objekte: [pauschalObjekt, stundenObjekt],
+      taetigkeiten: [
+        { id: "reinigung", standardStundensatzCent: 3000, kundenStundensatzCent: null },
+        { id: "rasen", standardStundensatzCent: 4000, kundenStundensatzCent: 4500 },
+      ],
+      // Der Satz der Villa gilt im Bürohaus nicht.
+      objektStundensaetze: [
+        { objektId: "buero-haus", taetigkeitId: "rasen", stundensatzCent: 5200 },
+        { objektId: "villa", taetigkeitId: "reinigung", stundensatzCent: 2400 },
+      ],
+      zusatzauftraege: [
+        {
+          id: "sturmschaden",
+          objektId: "buero-haus",
+          abrechnungsart: "stunden",
+          festbetragCent: null,
+          erledigt: false,
+        },
+      ],
+      zeiteintraege: [
+        eintrag("2026-07-08T13:04:51+02:00", "2026-07-08T14:31:07+02:00", {
+          objektId: "buero-haus",
+          taetigkeitId: "rasen",
+          zusatzauftragId: "sturmschaden",
+        }),
+        eintrag("2026-07-08T14:40:22+02:00", "2026-07-08T15:10:09+02:00", {
+          objektId: "buero-haus",
+          taetigkeitId: "reinigung",
+          zusatzauftragId: "sturmschaden",
+        }),
+      ],
+    }),
+  );
+  expect(ergebnis.positionen).toEqual([
+    { art: "pauschale", objektId: "buero-haus", monat: "2026-07", betragCent: 45000 },
+    {
+      art: "zusatzauftrag-stunden",
+      zusatzauftragId: "sturmschaden",
+      objektId: "buero-haus",
+      taetigkeitId: "reinigung",
+      minuten: 30,
+      stundensatzCent: 3000,
+      betragCent: 1500,
+    },
+    {
+      art: "zusatzauftrag-stunden",
+      zusatzauftragId: "sturmschaden",
+      objektId: "buero-haus",
+      taetigkeitId: "rasen",
+      minuten: 90,
+      stundensatzCent: 5200,
+      betragCent: 7800,
+    },
+  ]);
+});
+
+test("Einzeln abgerechnet nutzt ein Zusatzauftrag nach Stunden den Stundensatz des Objekts", () => {
+  const ergebnis = rechnungsvorbereitungFuerZusatzauftrag({
+    ...einzeln({}, [
+      eintrag("2026-03-10T11:00:09+01:00", "2026-03-10T12:00:02+01:00", {
+        objektId: "buero-haus",
+        zusatzauftragId: "sturmschaden",
+      }),
+      eintrag("2026-03-11T07:59:41+01:00", "2026-03-11T08:44:58+01:00", {
+        objektId: "buero-haus",
+        taetigkeitId: "rasen",
+        zusatzauftragId: "sturmschaden",
+      }),
+    ]),
+    objektStundensaetze: [
+      { objektId: "buero-haus", taetigkeitId: "reinigung", stundensatzCent: 3350 },
+    ],
+  });
+  expect(ergebnis.positionen).toMatchObject([
+    { taetigkeitId: "reinigung", minuten: 60, stundensatzCent: 3350, betragCent: 3350 },
+    // Ohne Objektsatz gilt der des Kunden.
+    { taetigkeitId: "rasen", minuten: 45, stundensatzCent: 4500, betragCent: 3375 },
+  ]);
+  expect(ergebnis.summeCent).toBe(6725);
 });

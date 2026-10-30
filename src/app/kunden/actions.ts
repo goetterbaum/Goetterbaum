@@ -7,7 +7,7 @@ import { istId } from "@/lib/id";
 import { pruefeKundenEingabe } from "@/lib/kunden/eingabe";
 import { ladeKunde } from "@/lib/kunden/verwaltung";
 import { FEHLER, OK, type Rueckmeldung } from "@/lib/rueckmeldung";
-import { pruefeKundenStundensatzEingabe } from "@/lib/stundensaetze/eingabe";
+import { pruefeStundensatzEingabe } from "@/lib/stundensaetze/eingabe";
 import { ladeTaetigkeit } from "@/lib/taetigkeiten/verwaltung";
 import { texte } from "@/texte";
 
@@ -88,7 +88,7 @@ export async function stundensatzFestlegen(
   const kunde = await ladeKunde(supabase, kundeId);
   if (!kunde) return FEHLER(texte.kunden.nichtGefunden);
 
-  const eingabe = pruefeKundenStundensatzEingabe(formData);
+  const eingabe = pruefeStundensatzEingabe(formData);
   if (!eingabe.ok) return FEHLER(eingabe.fehler);
   const { taetigkeit_id, stundensatz_cent } = eingabe.daten;
   const taetigkeit = await ladeTaetigkeit(supabase, taetigkeit_id);

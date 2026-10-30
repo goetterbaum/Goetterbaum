@@ -88,7 +88,7 @@ async function Bearbeiten({
         <ObjektTabelle objekte={objekte} mitKunde={false} />
       )}
 
-      <Stundensaetze supabase={supabase} kundeId={kunde.id} />
+      <Stundensaetze supabase={supabase} kundeId={kunde.id} objekte={objekte} />
 
       <ZurUebersicht />
     </>
