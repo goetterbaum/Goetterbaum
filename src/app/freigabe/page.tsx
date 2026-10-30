@@ -75,9 +75,6 @@ async function Liste({ parameter }: { parameter: PageProps<"/freigabe">["searchP
       <p>
         <Link href="/zeiteintraege">{texte.zeiteintraege.zurUebersicht}</Link>
       </p>
-      <p>
-        <Link href="/">{texte.stammdaten.zurStartseite}</Link>
-      </p>
     </>
   );
 }

@@ -1,11 +1,9 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import {
   angemeldeterMitarbeiter,
   type AngemeldeterMitarbeiter,
 } from "@/lib/angemeldeter-mitarbeiter";
-import { texte } from "@/texte";
 
 // Zeigt den Inhalt nur Büro-Nutzern. Das ist Bedienkomfort; geschützt
 // sind die Daten durch die Zugriffsregeln der Datenbank und die Prüfung
@@ -22,14 +20,7 @@ export async function NurFuerBuero({
   if (!ich) redirect("/anmelden");
 
   if (ich.rolle !== "buero") {
-    return (
-      <>
-        <p>{keineBerechtigung}</p>
-        <p>
-          <Link href="/">{texte.stammdaten.zurStartseite}</Link>
-        </p>
-      </>
-    );
+    return <p>{keineBerechtigung}</p>;
   }
 
   return children(ich);

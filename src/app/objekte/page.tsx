@@ -45,9 +45,6 @@ async function Liste() {
           <ObjektTabelle objekte={archivierte} mitKunde />
         </>
       )}
-      <p>
-        <Link href="/">{texte.stammdaten.zurStartseite}</Link>
-      </p>
     </>
   );
 }

@@ -87,9 +87,6 @@ async function Inhalt({
           <Abrechnungen kundeId={geladen.kunde.id} />
         </>
       )}
-      <p>
-        <Link href="/">{texte.stammdaten.zurStartseite}</Link>
-      </p>
     </>
   );
 }

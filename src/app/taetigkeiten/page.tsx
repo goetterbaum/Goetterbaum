@@ -39,9 +39,6 @@ async function Liste() {
           <Tabelle taetigkeiten={archivierte} />
         </>
       )}
-      <p>
-        <Link href="/">{texte.stammdaten.zurStartseite}</Link>
-      </p>
     </>
   );
 }

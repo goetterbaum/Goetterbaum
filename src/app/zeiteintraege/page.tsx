@@ -89,9 +89,6 @@ async function Liste() {
           </tbody>
         </table>
       )}
-      <p>
-        <Link href="/">{texte.stammdaten.zurStartseite}</Link>
-      </p>
     </>
   );
 }

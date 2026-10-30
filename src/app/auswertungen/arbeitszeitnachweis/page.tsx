@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Suspense } from "react";
 import { NurFuerBuero } from "@/app/nur-fuer-buero";
 import type { NachweisZeile } from "@/lib/auswertungen/arbeitszeitnachweis";
@@ -75,9 +74,6 @@ async function Inhalt({
       </form>
       {gewaehlt && !geladen && <p>{t.mitarbeiterNichtGefunden}</p>}
       {geladen && <Nachweis geladen={geladen} />}
-      <p>
-        <Link href="/">{texte.stammdaten.zurStartseite}</Link>
-      </p>
     </>
   );
 }

@@ -51,9 +51,6 @@ export function KeineBerechtigung() {
   return (
     <>
       <p>{texte.fuerAndere.keineBerechtigung}</p>
-      <p>
-        <Link href="/">{texte.stammdaten.zurStartseite}</Link>
-      </p>
     </>
   );
 }
