@@ -89,7 +89,7 @@ Wie erfasste Minuten für die Stundenabrechnung gerundet werden, z. B. minutenge
 _Avoid_: Taktung, Abrechnungstakt
 
 **Stundennachweis**:
-Eine Einzelaufstellung der berechneten Stunden (Datum, Objekt, Tätigkeit, Dauer, Anzahl Personen) für einen Kunden. Wird nur auf Nachfrage des Kunden erstellt und nennt keine Mitarbeiternamen.
+Eine Einzelaufstellung der berechneten Stunden (Datum, Objekt, Tätigkeit, Dauer, Anzahl Personen) für einen Kunden. Der Kunde bekommt ihn nur auf Nachfrage; das Büro sieht ihn in der Rechnungsvorbereitung immer unter den Positionen. Er nennt keine Mitarbeiternamen.
 _Avoid_: Leistungsnachweis, Regiebericht
 
 **Zusatzauftrag**:

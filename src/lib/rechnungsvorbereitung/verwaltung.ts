@@ -21,7 +21,13 @@ import {
 } from "@/lib/rechnungsvorbereitung";
 import { ladeKundenStundensaetze } from "@/lib/stundensaetze/verwaltung";
 import { alleSeiten } from "@/lib/supabase/alle-seiten";
-import { gewaehlterZeitraum, monatVon, type GewaehlterZeitraum } from "./zeitraum";
+import {
+  gewaehlterZeitraum,
+  monateDerZeit,
+  monatVon,
+  type GewaehlterZeitraum,
+  type Monate,
+} from "./zeitraum";
 import type { Namen } from "./zeilen";
 
 type ObjektZeile = {
@@ -184,9 +190,11 @@ type EinzelnerZusatzauftragZeile = ZusatzauftragZeile & {
 // eines Festbetrags, sonst null. wartetAufFreigabe: Nach Stunden lässt er
 // sich erst abrechnen, wenn alle seine Zeit freigegeben ist; später
 // freigegebene Zeit brächte dem Kunden sonst eine zweite Rechnung. Das
-// prüft auch die Datenbank.
+// prüft auch die Datenbank. monate: die Monate seiner abgerechneten Zeit,
+// null ohne Zeit.
 export type RechnungsvorbereitungFuerZusatzauftrag = GeladeneRechnungsvorbereitung & {
   kunde: Kunde;
+  monate: Monate | null;
   zusatzauftrag: {
     id: string;
     beschreibung: string;
@@ -259,8 +267,10 @@ export async function ladeRechnungsvorbereitungFuerZusatzauftrag(
     zeiteintraege: zeiteintraege.map(zeiteintragFuerRechenbaustein),
   });
 
+  const umfasst = new Set(ergebnis.zeiteintragIds);
   return {
     ergebnis,
+    monate: monateDerZeit(zeiteintraege.filter((z) => umfasst.has(z.id)).map((z) => z.beginn)),
     namen: {
       objekte: new Map([[za.objekt_id, za.objekt.bezeichnung]]),
       taetigkeiten: taetigkeiten.namen,

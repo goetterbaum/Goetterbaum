@@ -3,7 +3,7 @@
 // diese Zeilen; Mengen und Beträge kommen unverändert aus dem Baustein.
 import type { Rechnungsvorbereitung } from "@/lib/rechnungsvorbereitung";
 import { texte } from "@/texte";
-import { monatAlsText } from "./zeitraum";
+import { monatAlsText, monateAlsText, type Monate } from "./zeitraum";
 
 export type Zeile = {
   position: string;
@@ -12,8 +12,8 @@ export type Zeile = {
   zusatzauftrag: string;
   // Leer bei Pauschalen und Festbeträgen.
   taetigkeit: string;
-  // Nur bei Pauschalen.
-  monat: string;
+  // Bei Pauschalen ihr Monat, sonst die Monate der Rechnungsvorbereitung.
+  zeitraum: string;
   // Gerundete Minuten und Stundensatz nur bei Stunden.
   minuten: number | null;
   stundensatzCent: number | null;
@@ -29,9 +29,15 @@ export type Namen = {
   zusatzauftraege: Map<string, string>;
 };
 
-export function rechnungsZeilen(ergebnis: Rechnungsvorbereitung, namen: Namen): Zeilen {
+// monate: die Monate der Rechnungsvorbereitung; beim einzeln abgerechneten
+// Zusatzauftrag die Monate seiner Zeit, null, wenn er keine hat.
+export function rechnungsZeilen(
+  ergebnis: Rechnungsvorbereitung,
+  namen: Namen,
+  monate: Monate | null,
+): Zeilen {
   const t = texte.rechnungsvorbereitung;
-  const name = (liste: Map<string, string>, id: string) => liste.get(id) ?? t.unbekannt;
+  const zeitraum = monate === null ? "" : monateAlsText(monate);
 
   const zeilen = ergebnis.positionen.map((p): Zeile => {
     const gemeinsam = {
@@ -45,24 +51,29 @@ export function rechnungsZeilen(ergebnis: Rechnungsvorbereitung, namen: Namen): 
         return {
           ...gemeinsam,
           taetigkeit: "",
-          monat: monatAlsText(p.monat),
+          zeitraum: monatAlsText(p.monat),
           minuten: null,
           stundensatzCent: null,
         };
       case "zusatzauftrag-festbetrag":
-        return { ...gemeinsam, taetigkeit: "", monat: "", minuten: null, stundensatzCent: null };
+        return { ...gemeinsam, taetigkeit: "", zeitraum, minuten: null, stundensatzCent: null };
       case "stunden":
       case "zusatzauftrag-stunden":
         return {
           ...gemeinsam,
           taetigkeit: name(namen.taetigkeiten, p.taetigkeitId),
-          monat: "",
+          zeitraum,
           minuten: p.minuten,
           stundensatzCent: p.stundensatzCent,
         };
     }
   });
   return { zeilen, summeCent: ergebnis.summeCent };
+}
+
+// Der Name zu einer Kennung, „unbekannt“ statt einer leeren Zelle.
+export function name(liste: Map<string, string>, id: string): string {
+  return liste.get(id) ?? texte.rechnungsvorbereitung.unbekannt;
 }
 
 // Minuten als Stunden und Minuten, z. B. „1:15“. So bleibt auch eine

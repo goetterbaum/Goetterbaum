@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
   }
 
   return csvDatei(
-    rechnungsCsv(rechnungsZeilen(geladen.ergebnis, geladen.namen)),
+    rechnungsCsv(rechnungsZeilen(geladen.ergebnis, geladen.namen, geladen.zeitraum.monate)),
     texte.rechnungsvorbereitung.csvDateiname(geladen.kunde.name, geladen.zeitraum.ersterMonat),
   );
 }

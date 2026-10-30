@@ -114,6 +114,8 @@ test("Ohne berechnete Stunden gibt es keinen Stundennachweis", async ({ page }) 
   await erwarteAngemeldet(page, buero.name);
   await page.goto(`/rechnungsvorbereitung?kunde=${kundeId}&monat=2026-03`);
   await expect(page.locator("tfoot")).toContainText(/Summe\s*500,00\s€/);
+  await expect(page.getByRole("heading", { name: "Stundennachweis" })).toHaveCount(0);
+  await expect(page.locator("table")).toHaveCount(1);
   await expect(
     page.getByRole("link", { name: "Stundennachweis herunterladen (CSV-Datei)" }),
   ).toHaveCount(0);

@@ -512,7 +512,23 @@ export const texte = {
     spalteObjekt: "Objekt",
     spalteZusatzauftrag: "Zusatzauftrag",
     spalteTaetigkeit: "Tätigkeit",
-    spalteMonat: "Monat",
+    // Kurze Monatsnamen für einen Zeitraum über mehrere Monate, z. B.
+    // „Okt.–Dez. 2026“.
+    monateKurz: [
+      "Jan.",
+      "Feb.",
+      "März",
+      "Apr.",
+      "Mai",
+      "Juni",
+      "Juli",
+      "Aug.",
+      "Sept.",
+      "Okt.",
+      "Nov.",
+      "Dez.",
+    ],
+    monateVonBis: (von: string, bis: string) => `${von}–${bis}`,
     spalteStunden: "Stunden",
     spalteMinuten: "Minuten",
     spalteStundensatz: "Stundensatz",
@@ -582,6 +598,7 @@ export const texte = {
     zurRechnungsvorbereitung: "Zur Rechnungsvorbereitung",
   },
   stundennachweis: {
+    ueberschrift: "Stundennachweis",
     hinweis:
       "Nur wenn der Kunde danach fragt: Der Stundennachweis listet die berechneten Stunden je Tag, Objekt und Tätigkeit mit der Zahl der Personen, ohne Namen.",
     herunterladen: "Stundennachweis herunterladen (CSV-Datei)",
