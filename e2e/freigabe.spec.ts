@@ -220,7 +220,9 @@ test("Das Büro wählt in der Freigabe einen Monat, die übrigen Filter bleiben,
   await expect(page).toHaveURL(new RegExp(`kunde=${amLetzten.kundeId}`));
   await zurRechnungsvorbereitung.click();
   await expect(page).toHaveURL(
-    new RegExp(`/rechnungsvorbereitung\?kunde=${amLetzten.kundeId}&monat=2024-02$`),
+    (adresse) =>
+      adresse.pathname === "/rechnungsvorbereitung" &&
+      adresse.search === `?kunde=${amLetzten.kundeId}&monat=2024-02`,
   );
   await expect(page.getByRole("combobox", { name: /^Kunde/ })).toHaveValue(amLetzten.kundeId);
   await expect(feld(page, "Monat")).toHaveValue("2024-02");
