@@ -1,4 +1,5 @@
 import { texte } from "@/texte";
+import { Logo } from "../logo";
 import styles from "../page.module.css";
 import { PasswortFormular } from "./passwort-formular";
 
@@ -8,8 +9,11 @@ import { PasswortFormular } from "./passwort-formular";
 export default function PasswortFestlegen() {
   return (
     <div className={styles.page}>
-      <main className={styles.main}>
-        <h1>{texte.appName}</h1>
+      <main className={`${styles.main} ${styles.schmal}`}>
+        <h1>
+          <span className="sr-only">{texte.appName}</span>
+          <Logo gross />
+        </h1>
         <h2>{texte.passwortFestlegen.titel}</h2>
         <p>{texte.passwortFestlegen.hinweis}</p>
         <PasswortFormular />

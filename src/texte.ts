@@ -41,6 +41,10 @@ export const texte = {
     istZeit: "Ist-Zeit der Pauschal-Objekte",
     einstellungen: "Einstellungen der Firma",
     fuerAndereErfassen: "Für andere erfassen",
+    gruppeTagesgeschaeft: "Tagesgeschäft",
+    gruppeStammdaten: "Stammdaten",
+    gruppeAbrechnung: "Abrechnung und Auswertung",
+    gruppeFirma: "Firma",
   },
   passwortVergessen: {
     titel: "Passwort vergessen",

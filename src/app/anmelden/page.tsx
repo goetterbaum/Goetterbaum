@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { texte } from "@/texte";
+import { Logo } from "../logo";
 import styles from "../page.module.css";
 import { AnmeldeFormular } from "./anmelde-formular";
 
@@ -9,8 +10,11 @@ import { AnmeldeFormular } from "./anmelde-formular";
 export default function Anmelden({ searchParams }: PageProps<"/anmelden">) {
   return (
     <div className={styles.page}>
-      <main className={styles.main}>
-        <h1>{texte.appName}</h1>
+      <main className={`${styles.main} ${styles.schmal}`}>
+        <h1>
+          <span className="sr-only">{texte.appName}</span>
+          <Logo gross />
+        </h1>
         <h2>{texte.anmelden.titel}</h2>
         <Suspense>
           <LinkHinweis fehler={searchParams.then((p) => p.fehler)} />
