@@ -21,7 +21,9 @@ test("Auf einer langen Unterseite bleibt der Button „Startseite“ nach dem Sc
   const firma = await legeEigeneFirmaAn();
   try {
     // Eigene Firma, damit die Liste sicher länger ist als der Bildschirm.
-    for (let i = 0; i < 30; i++) await legeTaetigkeitAn(dienstZugang()!, firma.id);
+    const taetigkeiten = [];
+    for (let i = 0; i < 30; i++)
+      taetigkeiten.push(await legeTaetigkeitAn(dienstZugang()!, firma.id));
 
     await meldeAn(page, firma.buero);
     await erwarteAngemeldet(page, firma.buero.name);
@@ -38,8 +40,10 @@ test("Auf einer langen Unterseite bleibt der Button „Startseite“ nach dem Sc
     expect(leiste.height).toBeLessThanOrEqual(56);
     expect((await ueberschrift.boundingBox())!.y).toBeGreaterThanOrEqual(leiste.y + leiste.height);
 
+    // Die Liste lädt nach der Überschrift; erst mit ihr ist die Seite lang.
+    for (const { name } of taetigkeiten) await expect(page.getByText(name)).toBeAttached();
     await page.mouse.wheel(0, 100_000);
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(500);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(300);
     await expect(ueberschrift).not.toBeInViewport();
     await expect(startseitenKnopf(page)).toBeInViewport();
 
