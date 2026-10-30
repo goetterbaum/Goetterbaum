@@ -15,7 +15,7 @@ export function StartseitenLeiste() {
 
   return (
     <nav className={styles.leiste}>
-      <Link href="/" className={styles.knopf}>
+      <Link href="/" className={styles.link}>
         <HausSymbol />
         {texte.leiste.startseite}
       </Link>

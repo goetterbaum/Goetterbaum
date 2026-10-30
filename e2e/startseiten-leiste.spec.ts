@@ -34,6 +34,7 @@ test("Auf einer langen Unterseite bleibt der Button „Startseite“ nach dem Sc
 
     // Schmal und ohne etwas zu verdecken: Die Überschrift beginnt unter der Leiste.
     const leiste = (await page.getByRole("navigation").boundingBox())!;
+    // 56 px: höchstens so hoch wie eine übliche Handy-Kopfzeile.
     expect(leiste.height).toBeLessThanOrEqual(56);
     expect((await ueberschrift.boundingBox())!.y).toBeGreaterThanOrEqual(leiste.y + leiste.height);
 

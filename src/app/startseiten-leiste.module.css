@@ -10,7 +10,7 @@
   border-bottom: 1px solid color-mix(in srgb, var(--foreground) 15%, transparent);
 }
 
-.knopf {
+.link {
   display: inline-flex;
   align-items: center;
   gap: 6px;
