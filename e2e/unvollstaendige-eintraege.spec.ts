@@ -86,7 +86,7 @@ test.describe("am Handy", () => {
     await expect(page.getByRole("heading", { name: "Unvollständig", exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Start", exact: true })).toBeVisible();
     const eintrag = page.getByRole("listitem").filter({ hasText: objekt.bezeichnung });
-    await expect(eintrag).toContainText(`–${berlinerUhrzeit(ende)}`);
+    await expect(eintrag).toContainText(` – ${berlinerUhrzeit(ende)}`);
     await expect(eintrag).toContainText("Nachtrag");
     const gespeichert = await gespeicherterEintrag(id);
     expect(gespeichert.nachtrag).toBe(true);
@@ -139,18 +139,27 @@ test("Das Büro sieht alle unvollständigen Einträge auf der Prüfliste und tr�
   const buero = await legeEigenenZugangAn(firmaA.id, "buero");
   const vergesslich = await legeEigenenZugangAn(firmaA.id);
   const fleissig = await legeEigenenZugangAn(firmaA.id);
-  const { id, ende } = await laufenderEintrag(firmaA.id, vergesslich, vorStunden(26));
-  await laufenderEintrag(firmaA.id, fleissig, vorStunden(2));
+  const vergesslichBeginn = vorStunden(26);
+  const fleissigBeginn = vorStunden(2);
+  const { id, ende } = await laufenderEintrag(firmaA.id, vergesslich, vergesslichBeginn);
+  await laufenderEintrag(firmaA.id, fleissig, fleissigBeginn);
 
   await meldeAn(page, buero);
   await erwarteAngemeldet(page, buero.name);
 
-  // In der Übersicht steht er als unvollständig, ...
+  // In der Übersicht steht er als unvollständig, der laufende Eintrag von
+  // heute mit „läuft“, beide ohne Dauer, ...
   await page.getByRole("link", { name: "Zeiteinträge ansehen" }).click();
-  await expect(page.getByRole("row").filter({ hasText: vergesslich.name })).toContainText(
-    "unvollständig",
+  const vergesslichZeile = page.getByRole("row").filter({ hasText: vergesslich.name });
+  const fleissigZeile = page.getByRole("row").filter({ hasText: fleissig.name });
+  await expect(vergesslichZeile.getByRole("cell", { name: /– unvollständig$/ })).toHaveText(
+    `${berlinerUhrzeit(vergesslichBeginn)} – unvollständig`,
   );
-  await expect(page.getByRole("row").filter({ hasText: fleissig.name })).toContainText("läuft");
+  await expect(fleissigZeile.getByRole("cell", { name: /– läuft$/ })).toHaveText(
+    `${berlinerUhrzeit(fleissigBeginn)} – läuft`,
+  );
+  await expect(vergesslichZeile).not.toContainText("Std.");
+  await expect(fleissigZeile).not.toContainText("Std.");
 
   // ... auf der Prüfliste nur er, nicht der laufende Eintrag von heute.
   await page.getByRole("link", { name: "Unvollständige Zeiteinträge prüfen" }).click();

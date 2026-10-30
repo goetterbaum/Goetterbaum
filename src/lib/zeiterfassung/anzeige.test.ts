@@ -5,6 +5,8 @@ import {
   istUnvollstaendig,
   laeuftSeit,
   nachTagen,
+  spalten,
+  tagUndZeit,
   wasUndWo,
   type MeinZeiteintrag,
 } from "./anzeige";
@@ -133,4 +135,61 @@ test("Was und wo: die Fahrt oder Objekt und Tätigkeit, dazu ein zugeordneter Zu
   expect(wasUndWo(regulaer)).toBe("Haus A · Unterhaltsreinigung");
   expect(wasUndWo(sturmschaden)).toBe("Haus A · Gartenpflege · Zusatzauftrag: Sturmschaden Hof");
   expect(wasUndWo(fahrt)).toBe("Fahrt");
+});
+
+test("Ein Eintrag in Spalten: Datum mit Jahr, Arbeitszeit von – bis und Dauer in Stunden", () => {
+  // Mo., 12.10.2026, 07:00:14 bis 09:30:41 in Berlin (Sommerzeit).
+  expect(spalten("2026-10-12T05:00:14Z", "2026-10-12T07:30:41Z", "läuft")).toEqual({
+    datum: "Mo., 12.10.2026",
+    arbeitszeit: "07:00 – 09:30",
+    dauer: "2:30 Std.",
+  });
+});
+
+test("Über Mitternacht: Datum des Beginns, Zusatz (+1 Tag) und die volle Dauer", () => {
+  // Sa., 24.10.2026, 22:15:09 Sommerzeit bis So., 25.10., 06:40:52 Winterzeit:
+  // In der Nacht wurde die Uhr um eine Stunde zurückgestellt, gearbeitet
+  // wurden 9:26 Stunden.
+  expect(spalten("2026-10-24T20:15:09Z", "2026-10-25T05:40:52Z", "läuft")).toEqual({
+    datum: "Sa., 24.10.2026",
+    arbeitszeit: "22:15 – 06:40 (+1 Tag)",
+    dauer: "9:26 Std.",
+  });
+});
+
+test("Ein Eintrag, der genau um Mitternacht endet, bekommt keinen Zusatz", () => {
+  // Fr., 16.10.2026, 22:00:00 bis Sa., 17.10., 00:00:00 in Berlin: Am
+  // Samstag wurde nicht gearbeitet.
+  expect(spalten("2026-10-16T20:00:00Z", "2026-10-16T22:00:00Z", "läuft").arbeitszeit).toBe(
+    "22:00 – 00:00",
+  );
+});
+
+test("Ein Eintrag über mehrere Mitternächte nennt die Zahl der Tage", () => {
+  // Fr., 16.10.2026, 18:05:33 bis So., 18.10., 07:12:08 in Berlin.
+  expect(spalten("2026-10-16T16:05:33Z", "2026-10-18T05:12:08Z", "läuft")).toEqual({
+    datum: "Fr., 16.10.2026",
+    arbeitszeit: "18:05 – 07:12 (+2 Tage)",
+    dauer: "37:07 Std.",
+  });
+});
+
+test("Ein laufender Eintrag hat statt des Endes den Hinweis und keine Dauer", () => {
+  // Beginn Mo., 12.10.2026, 07:00:38 in Berlin.
+  expect(spalten("2026-10-12T05:00:38Z", null, "läuft")).toEqual({
+    datum: "Mo., 12.10.2026",
+    arbeitszeit: "07:00 – läuft",
+    dauer: "",
+  });
+  expect(spalten("2026-10-12T05:00:38Z", null, "unvollständig").arbeitszeit).toBe(
+    "07:00 – unvollständig",
+  );
+});
+
+test("Tag und Zeit in einer Zeile: von – bis mit Leerzeichen um den Strich", () => {
+  // Fr., 16.10.2026, 08:00:27 bis 10:30:51 in Berlin.
+  expect(tagUndZeit("2026-10-16T06:00:27Z", "2026-10-16T08:30:51Z", "läuft")).toBe(
+    "Fr., 16.10., 08:00 – 10:30",
+  );
+  expect(tagUndZeit("2026-10-16T06:00:27Z", null, "läuft")).toBe("Fr., 16.10., 08:00 – läuft");
 });

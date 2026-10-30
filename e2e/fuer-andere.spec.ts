@@ -107,7 +107,7 @@ test("Ein Vorarbeiter startet, stoppt, trägt nach und ändert für einen Kolleg
   await zeitenEintragen(page, "07:00", "08:00");
   await expect(page).toHaveURL(new RegExp(`/fuer-andere/${kollege.id}$`));
   const fahrt = page.getByRole("listitem").filter({ hasText: "Fahrt" });
-  await expect(fahrt).toContainText("07:00–08:00 · 1:00 h");
+  await expect(fahrt).toContainText("07:00 – 08:00 · 1:00 h");
   await expect(fahrt).toContainText("Nachtrag");
   await expect(fahrt).toContainText(angelegtVonVorarbeiter);
 
@@ -119,7 +119,7 @@ test("Ein Vorarbeiter startet, stoppt, trägt nach und ändert für einen Kolleg
   await page.getByRole("button", { name: "Speichern" }).click();
   await expect(page).toHaveURL(new RegExp(`/fuer-andere/${kollege.id}$`));
   await expect(page.getByRole("listitem").filter({ hasText: "Fahrt" })).toContainText(
-    "07:00–08:30 · 1:30 h",
+    "07:00 – 08:30 · 1:30 h",
   );
 
   // Gespeichert ist alles beim Kollegen, angelegt vom Vorarbeiter.
@@ -217,7 +217,7 @@ test("Das Büro ändert auch Einträge deaktivierter Mitarbeiter und kommt zur �
   await page.getByRole("button", { name: "Speichern" }).click();
   await expect(page).toHaveURL(/\/zeiteintraege$/);
   const zeile = page.getByRole("row").filter({ hasText: ehemaliger.name });
-  await expect(zeile).toContainText("13:00–14:15");
+  await expect(zeile).toContainText("13:00 – 14:15");
   await expect(zeile).toContainText("Nachtrag");
 });
 

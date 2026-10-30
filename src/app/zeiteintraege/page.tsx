@@ -2,12 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { NurFuerBuero } from "@/app/nur-fuer-buero";
 import { createClient } from "@/lib/supabase/server";
-import {
-  ANGEZEIGTE_TAGE,
-  istUnvollstaendig,
-  tagUndZeit,
-  wasUndWo,
-} from "@/lib/zeiterfassung/anzeige";
+import { ANGEZEIGTE_TAGE, istUnvollstaendig, spalten, wasUndWo } from "@/lib/zeiterfassung/anzeige";
 import { ladeZeiteintraegeDerFirma } from "@/lib/zeiterfassung/verwaltung";
 import { texte } from "@/texte";
 import styles from "../page.module.css";
@@ -50,7 +45,9 @@ async function Liste() {
           <thead>
             <tr>
               <th>{t.spalteMitarbeiter}</th>
-              <th>{t.spalteZeit}</th>
+              <th>{t.spalteDatum}</th>
+              <th>{t.spalteArbeitszeit}</th>
+              <th>{t.spalteDauer}</th>
               <th>{t.spalteWas}</th>
               <th>{t.spalteNachtrag}</th>
               <th>{texte.freigabe.markierung}</th>
@@ -62,12 +59,13 @@ async function Liste() {
           <tbody>
             {eintraege.map((e) => {
               const unvollstaendig = istUnvollstaendig(e, jetzt);
+              const zeit = spalten(e.beginn, e.ende, unvollstaendig ? t.unvollstaendig : t.laeuft);
               return (
                 <tr key={e.id}>
                   <td>{e.mitarbeiter_name}</td>
-                  <td>
-                    {tagUndZeit(e.beginn, e.ende, unvollstaendig ? t.unvollstaendig : t.laeuft)}
-                  </td>
+                  <td>{zeit.datum}</td>
+                  <td>{zeit.arbeitszeit}</td>
+                  <td>{zeit.dauer}</td>
                   <td>{wasUndWo(e)}</td>
                   <td>{e.nachtrag ? texte.nachtrag.markierung : ""}</td>
                   <td>{e.freigegeben_am !== null ? texte.freigabe.markierung : ""}</td>
