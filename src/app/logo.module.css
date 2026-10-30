@@ -1,0 +1,36 @@
+/* Das Bild hat einen weißen Rand. Der Rahmen schneidet ihn weg (Inhalt liegt
+   etwa bei x 15–389 und y 18–116 von 429 × 144 Pixeln). */
+.rahmen {
+  display: inline-block;
+  height: 40px;
+  aspect-ratio: 380 / 104;
+  overflow: hidden;
+  border-radius: 6px;
+}
+
+.gross {
+  height: auto;
+  width: min(300px, 80vw);
+}
+
+.bild {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 45% 55%;
+  /* Weiß verschwindet auf hellem Hintergrund. */
+  mix-blend-mode: multiply;
+}
+
+/* Im dunklen Modus wäre die dunkle Schrift kaum lesbar: helle Fläche dahinter. */
+@media (prefers-color-scheme: dark) {
+  .rahmen {
+    background: #fff;
+    padding: 4px 8px;
+    box-sizing: content-box;
+  }
+
+  .bild {
+    mix-blend-mode: normal;
+  }
+}
