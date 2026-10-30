@@ -89,7 +89,7 @@ test("Ein Mitarbeiter startet und stoppt einen Zeiteintrag mit Objekt und Tätig
   await expect(page.getByText(/^Läuft seit/)).toHaveCount(0);
   const liste = page.getByRole("listitem").filter({ hasText: objekt.bezeichnung });
   await expect(liste).toContainText(taetigkeit.name);
-  await expect(liste).toContainText(/\d\d:\d\d–\d\d:\d\d · 0:0\d h/);
+  await expect(liste).toContainText(/\d\d:\d\d – \d\d:\d\d · 0:0\d h/);
 
   const [gestoppt] = await zeiteintraegeVon(ich);
   expect(gestoppt.ende).not.toBeNull();
