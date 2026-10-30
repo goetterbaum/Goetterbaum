@@ -40,10 +40,11 @@ test("Auf einer langen Unterseite bleibt der Button „Startseite“ nach dem Sc
     expect(leiste.height).toBeLessThanOrEqual(56);
     expect((await ueberschrift.boundingBox())!.y).toBeGreaterThanOrEqual(leiste.y + leiste.height);
 
-    // Die Liste lädt nach der Überschrift; erst mit ihr ist die Seite lang.
+    // Ans Ende der Liste scrollen, bis die Überschrift aus dem Blick ist.
     for (const { name } of taetigkeiten) await expect(page.getByText(name)).toBeAttached();
-    await page.mouse.wheel(0, 100_000);
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(300);
+    const letzte = page.getByRole("row").last();
+    await letzte.scrollIntoViewIfNeeded();
+    await expect(letzte).toBeInViewport();
     await expect(ueberschrift).not.toBeInViewport();
     await expect(startseitenKnopf(page)).toBeInViewport();
 
