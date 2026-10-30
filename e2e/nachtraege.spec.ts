@@ -68,7 +68,7 @@ test("Ein Mitarbeiter trägt eine Tätigkeit nach, ändert sie, und Überschneid
 
   await expect(page).toHaveURL(/\/$/);
   const eintrag = page.getByRole("listitem").filter({ hasText: objekt.bezeichnung });
-  await expect(eintrag).toContainText("07:00–09:30 · 2:30 h");
+  await expect(eintrag).toContainText("07:00 – 09:30 · 2:30 h");
   await expect(eintrag).toContainText("Nachtrag");
   expect(await zeiteintraegeVon(ich)).toEqual([
     expect.objectContaining({
@@ -98,7 +98,7 @@ test("Ein Mitarbeiter trägt eine Tätigkeit nach, ändert sie, und Überschneid
   await page.getByRole("button", { name: "Speichern" }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole("listitem").filter({ hasText: "Fahrt" })).toContainText(
-    "09:30–10:00",
+    "09:30 – 10:00",
   );
 
   // Ändern: Die Tätigkeit beginnt eine halbe Stunde früher.
@@ -111,7 +111,7 @@ test("Ein Mitarbeiter trägt eine Tätigkeit nach, ändert sie, und Überschneid
   await feld(page, "Von").fill("06:30");
   await page.getByRole("button", { name: "Speichern" }).click();
   await expect(page).toHaveURL(/\/$/);
-  await expect(eintrag).toContainText("06:30–09:30 · 3:00 h");
+  await expect(eintrag).toContainText("06:30 – 09:30 · 3:00 h");
   expect(await zeiteintraegeVon(ich)).toHaveLength(2);
 });
 
@@ -131,14 +131,14 @@ test("Ein geänderter Live-Eintrag wird zum Nachtrag, und das Büro sieht das Pr
   await page.reload();
 
   const eintrag = page.getByRole("listitem").filter({ hasText: objekt.bezeichnung });
-  await expect(eintrag).toContainText("08:00–10:00");
+  await expect(eintrag).toContainText("08:00 – 10:00");
   await expect(eintrag).not.toContainText("Nachtrag");
 
   await eintrag.getByRole("link", { name: "Ändern" }).click();
   await feld(page, "Bis").fill("09:30");
   await page.getByRole("button", { name: "Speichern" }).click();
   await expect(page).toHaveURL(/\/$/);
-  await expect(eintrag).toContainText("08:00–09:30");
+  await expect(eintrag).toContainText("08:00 – 09:30");
   await expect(eintrag).toContainText("Nachtrag");
 
   // Ein normaler Mitarbeiter kommt nicht an die Übersicht des Büros.
@@ -153,10 +153,20 @@ test("Ein geänderter Live-Eintrag wird zum Nachtrag, und das Büro sieht das Pr
   await meldeAn(page, firmaA.buero);
   await erwarteAngemeldet(page, firmaA.buero.name);
   await page.getByRole("link", { name: "Zeiteinträge ansehen" }).click();
+  // Statt einer Spalte „Zeit“ gibt es Datum, Arbeitszeit und Dauer.
   const zeile = page.getByRole("row").filter({ hasText: ich.name });
   await expect(zeile).toHaveCount(1);
+  const kopf = page.getByRole("columnheader");
+  await expect(kopf.filter({ hasText: /^Zeit$/ })).toHaveCount(0);
+  const spalte = async (name: string) =>
+    (await kopf.allTextContents()).findIndex((text) => text === name);
+  const zellen = zeile.getByRole("cell");
+  await expect(zellen.nth(await spalte("Datum"))).toHaveText(
+    new RegExp(`^\\w\\w\\., ${GESTERN_ANGEZEIGT}$`),
+  );
+  await expect(zellen.nth(await spalte("Arbeitszeit"))).toHaveText("08:00 – 09:30");
+  await expect(zellen.nth(await spalte("Dauer"))).toHaveText("1:30 Std.");
   await expect(zeile).toContainText(`${objekt.bezeichnung} · ${taetigkeit.name}`);
-  await expect(zeile).toContainText("08:00–09:30");
   await expect(zeile).toContainText("Nachtrag");
 
   await zeile.getByRole("link", { name: "Protokoll" }).click();

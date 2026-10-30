@@ -263,7 +263,7 @@ test.describe("am Handy", () => {
     const eintrag = page
       .getByRole("listitem")
       .filter({ hasText: `Zusatzauftrag: ${sturmschaden.beschreibung}` });
-    await expect(eintrag).toContainText("07:30–09:45");
+    await expect(eintrag).toContainText("07:30 – 09:45");
     const [nachgetragen] = await zeiteintraegeVon(kollege);
     expect(nachgetragen).toMatchObject({
       zusatzauftrag_id: sturmschaden.zusatzauftragId,
@@ -287,7 +287,7 @@ test.describe("am Handy", () => {
     await expect(
       page.getByRole("heading", { name: `Erfassung für ${kollege.name}` }),
     ).toBeVisible();
-    await expect(eintrag).toContainText("07:30–10:00");
+    await expect(eintrag).toContainText("07:30 – 10:00");
     expect((await zeiteintraegeVon(kollege))[0].zusatzauftrag_id).toBe(
       sturmschaden.zusatzauftragId,
     );
