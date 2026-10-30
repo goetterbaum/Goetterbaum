@@ -194,6 +194,13 @@ test("Quartalsweise: Pauschalen je Monat, Stunden und Zusatzaufträge mit dem ga
     ],
     zusatzauftraege: [
       {
+        id: "za-sturm",
+        objektId: "o-pauschal",
+        abrechnungsart: "stunden",
+        festbetragCent: null,
+        erledigt: false,
+      },
+      {
         id: "za-grund",
         objektId: "o-stunden",
         abrechnungsart: "festbetrag",
@@ -202,6 +209,16 @@ test("Quartalsweise: Pauschalen je Monat, Stunden und Zusatzaufträge mit dem ga
       },
     ],
     zeiteintraege: [
+      {
+        id: "z0",
+        mitarbeiterId: "m1",
+        art: "taetigkeit",
+        objektId: "o-pauschal",
+        taetigkeitId: "t-unterhalt",
+        zusatzauftragId: "za-sturm",
+        beginn: "2026-11-09T08:10:27+00:00",
+        ende: "2026-11-09T09:25:03+00:00",
+      },
       {
         id: "z1",
         mitarbeiterId: "m1",
@@ -237,6 +254,7 @@ test("Quartalsweise: Pauschalen je Monat, Stunden und Zusatzaufträge mit dem ga
     ["Pauschale", "November 2026"],
     ["Pauschale", "Dezember 2026"],
     ["Stunden", "Okt.–Dez. 2026"],
+    ["Zusatzauftrag nach Stunden", "Okt.–Dez. 2026"],
     ["Zusatzauftrag mit Festbetrag", "Okt.–Dez. 2026"],
   ]);
 });

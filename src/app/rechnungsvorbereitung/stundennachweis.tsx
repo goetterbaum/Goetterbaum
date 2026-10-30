@@ -1,6 +1,6 @@
 import { datumAlsText } from "@/lib/berliner-zeit";
 import type { GerundeterTag } from "@/lib/rechnungsvorbereitung";
-import { stundenAlsText, type Namen } from "@/lib/rechnungsvorbereitung/zeilen";
+import { name, stundenAlsText, type Namen } from "@/lib/rechnungsvorbereitung/zeilen";
 import { texte } from "@/texte";
 
 // Der Stundennachweis als Tagesliste unter den Positionen, damit das Büro
@@ -21,7 +21,6 @@ export function Stundennachweis({
   if (tage.length === 0) return null;
   const t = texte.stundennachweis;
   const r = texte.rechnungsvorbereitung;
-  const name = (liste: Map<string, string>, id: string) => liste.get(id) ?? r.unbekannt;
   return (
     <>
       <h3>{t.ueberschrift}</h3>

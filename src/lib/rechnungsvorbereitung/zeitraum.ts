@@ -59,7 +59,7 @@ export function monateAlsText({ von, bis }: Monate): string {
 // ohne Zeit. Wie in der regulären Rechnungsvorbereitung zählt der Beginn.
 export function monateDerZeit(beginne: string[]): Monate | null {
   if (beginne.length === 0) return null;
-  const monate = beginne.map((beginn) => berlinerDatum(Date.parse(beginn)).slice(0, 7)).sort();
+  const monate = beginne.map((beginn) => monatVon(berlinerDatum(Date.parse(beginn)))).sort();
   return { von: monate[0], bis: monate[monate.length - 1] };
 }
 
@@ -79,11 +79,12 @@ export function gewaehlterZeitraum(
   jetzt: number,
 ): GewaehlterZeitraum {
   const quartalsweise = abrechnungszeitraum === "quartalsweise";
+  const anzahlMonate = quartalsweise ? 3 : 1;
   const [hJahr, hMonat] = berlinerDatum(jetzt).split("-").map(Number);
   const gewaehlt = typeof wert === "string" ? /^(\d{4})-(0[1-9]|1[0-2])$/.exec(wert.trim()) : null;
   let [jahr, nummer] = gewaehlt
     ? [Number(gewaehlt[1]), Number(gewaehlt[2])]
-    : [hJahr, hMonat - (quartalsweise ? 3 : 1)];
+    : [hJahr, hMonat - anzahlMonate];
   if (nummer < 1) [jahr, nummer] = [jahr - 1, nummer + 12];
   if (quartalsweise) nummer -= (nummer - 1) % 3;
 
@@ -91,10 +92,8 @@ export function gewaehlterZeitraum(
   return {
     ersterMonat,
     bezeichnung: quartalsweise ? `${(nummer + 2) / 3}. Quartal ${jahr}` : monatAlsText(ersterMonat),
-    monate: { von: ersterMonat, bis: monat(jahr, nummer, quartalsweise ? 2 : 0) },
+    monate: { von: ersterMonat, bis: monat(jahr, nummer, anzahlMonate - 1) },
     ab: new Date(berlinerMitternacht(`${ersterMonat}-01`)).toISOString(),
-    bisVor: new Date(
-      berlinerMitternacht(`${monat(jahr, nummer, quartalsweise ? 3 : 1)}-01`),
-    ).toISOString(),
+    bisVor: new Date(berlinerMitternacht(`${monat(jahr, nummer, anzahlMonate)}-01`)).toISOString(),
   };
 }

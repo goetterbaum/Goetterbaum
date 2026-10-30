@@ -37,7 +37,6 @@ export function rechnungsZeilen(
   monate: Monate | null,
 ): Zeilen {
   const t = texte.rechnungsvorbereitung;
-  const name = (liste: Map<string, string>, id: string) => liste.get(id) ?? t.unbekannt;
   const zeitraum = monate === null ? "" : monateAlsText(monate);
 
   const zeilen = ergebnis.positionen.map((p): Zeile => {
@@ -70,6 +69,11 @@ export function rechnungsZeilen(
     }
   });
   return { zeilen, summeCent: ergebnis.summeCent };
+}
+
+// Der Name zu einer Kennung, „unbekannt“ statt einer leeren Zelle.
+export function name(liste: Map<string, string>, id: string): string {
+  return liste.get(id) ?? texte.rechnungsvorbereitung.unbekannt;
 }
 
 // Minuten als Stunden und Minuten, z. B. „1:15“. So bleibt auch eine
