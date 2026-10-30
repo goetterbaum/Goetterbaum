@@ -1,5 +1,7 @@
 import { expect, test } from "vitest";
+import { rechnungsvorbereitung } from "@/lib/rechnungsvorbereitung";
 import { rechnungsCsv } from "./csv";
+import { rechnungsZeilen } from "./zeilen";
 
 test("Die CSV-Datei hat BOM, Semikolons, deutsche Kommazahlen ohne Euro-Zeichen und eine Summe", () => {
   const csv = rechnungsCsv({
@@ -9,7 +11,7 @@ test("Die CSV-Datei hat BOM, Semikolons, deutsche Kommazahlen ohne Euro-Zeichen 
         objekt: "Wohnanlage Ringstraße",
         zusatzauftrag: "",
         taetigkeit: "",
-        monat: "März 2026",
+        zeitraum: "März 2026",
         minuten: null,
         stundensatzCent: null,
         betragCent: 123456,
@@ -19,7 +21,7 @@ test("Die CSV-Datei hat BOM, Semikolons, deutsche Kommazahlen ohne Euro-Zeichen 
         objekt: "Büro Domplatz",
         zusatzauftrag: "",
         taetigkeit: "Unterhaltsreinigung",
-        monat: "",
+        zeitraum: "März 2026",
         minuten: 75,
         stundensatzCent: 3000,
         betragCent: 3750,
@@ -29,7 +31,7 @@ test("Die CSV-Datei hat BOM, Semikolons, deutsche Kommazahlen ohne Euro-Zeichen 
         objekt: "Büro Domplatz",
         zusatzauftrag: "Wasserschaden Keller",
         taetigkeit: "Unterhaltsreinigung",
-        monat: "",
+        zeitraum: "März 2026",
         minuten: 30,
         stundensatzCent: 3000,
         betragCent: 1500,
@@ -39,7 +41,7 @@ test("Die CSV-Datei hat BOM, Semikolons, deutsche Kommazahlen ohne Euro-Zeichen 
         objekt: "Büro Domplatz",
         zusatzauftrag: "Grundreinigung nach Umbau",
         taetigkeit: "",
-        monat: "",
+        zeitraum: "März 2026",
         minuten: null,
         stundensatzCent: null,
         betragCent: 89000,
@@ -50,12 +52,58 @@ test("Die CSV-Datei hat BOM, Semikolons, deutsche Kommazahlen ohne Euro-Zeichen 
 
   expect(csv).toBe(
     "﻿" +
-      "Position;Objekt;Zusatzauftrag;Tätigkeit;Monat;Stunden;Minuten;Stundensatz;Betrag\r\n" +
+      "Position;Objekt;Zusatzauftrag;Tätigkeit;Zeitraum;Stunden;Minuten;Stundensatz;Betrag\r\n" +
       "Pauschale;Wohnanlage Ringstraße;;;März 2026;;;;1234,56\r\n" +
-      "Stunden;Büro Domplatz;;Unterhaltsreinigung;;1:15;75;30,00;37,50\r\n" +
-      "Zusatzauftrag nach Stunden;Büro Domplatz;Wasserschaden Keller;Unterhaltsreinigung;;0:30;30;30,00;15,00\r\n" +
-      "Zusatzauftrag mit Festbetrag;Büro Domplatz;Grundreinigung nach Umbau;;;;;;890,00\r\n" +
+      "Stunden;Büro Domplatz;;Unterhaltsreinigung;März 2026;1:15;75;30,00;37,50\r\n" +
+      "Zusatzauftrag nach Stunden;Büro Domplatz;Wasserschaden Keller;Unterhaltsreinigung;März 2026;0:30;30;30,00;15,00\r\n" +
+      "Zusatzauftrag mit Festbetrag;Büro Domplatz;Grundreinigung nach Umbau;;März 2026;;;;890,00\r\n" +
       "Summe;;;;;;;;2177,06\r\n",
+  );
+});
+
+test("Quartalsweise: Pauschalen mit ihrem Monat, Stunden mit dem ganzen Quartal als Zeitraum", () => {
+  const ergebnis = rechnungsvorbereitung({
+    kunde: { rundungsregel: "15-minuten", abrechnungszeitraum: "quartalsweise" },
+    ersterMonat: "2026-07",
+    objekte: [
+      { id: "o-pauschal", abrechnungsart: "pauschale", pauschaleCent: 50000 },
+      { id: "o-stunden", abrechnungsart: "stunden", pauschaleCent: null },
+    ],
+    taetigkeiten: [
+      { id: "t-unterhalt", standardStundensatzCent: 3000, kundenStundensatzCent: null },
+    ],
+    zusatzauftraege: [],
+    zeiteintraege: [
+      {
+        id: "z1",
+        mitarbeiterId: "m1",
+        art: "taetigkeit",
+        objektId: "o-stunden",
+        taetigkeitId: "t-unterhalt",
+        zusatzauftragId: null,
+        // 52 Minuten → 60 Minuten
+        beginn: "2026-08-03T05:30:08+00:00",
+        ende: "2026-08-03T06:22:31+00:00",
+      },
+    ],
+    abgerechnetePauschalMonate: [{ objektId: "o-pauschal", monat: "2026-07" }],
+  });
+  const namen = {
+    objekte: new Map([
+      ["o-pauschal", "Wohnanlage Ringstraße"],
+      ["o-stunden", "Büro Domplatz"],
+    ]),
+    taetigkeiten: new Map([["t-unterhalt", "Unterhaltsreinigung"]]),
+    zusatzauftraege: new Map<string, string>(),
+  };
+
+  expect(rechnungsCsv(rechnungsZeilen(ergebnis, namen, { von: "2026-07", bis: "2026-09" }))).toBe(
+    "﻿" +
+      "Position;Objekt;Zusatzauftrag;Tätigkeit;Zeitraum;Stunden;Minuten;Stundensatz;Betrag\r\n" +
+      "Pauschale;Wohnanlage Ringstraße;;;August 2026;;;;500,00\r\n" +
+      "Pauschale;Wohnanlage Ringstraße;;;September 2026;;;;500,00\r\n" +
+      "Stunden;Büro Domplatz;;Unterhaltsreinigung;Juli–Sept. 2026;1:00;60;30,00;30,00\r\n" +
+      "Summe;;;;;;;;1030,00\r\n",
   );
 });
 
@@ -67,7 +115,7 @@ test("Semikolons, Anführungszeichen und Zeilenumbrüche in Namen bleiben in ihr
         objekt: 'Haus "Sonne"; Eingang B\nHinterhof',
         zusatzauftrag: "Dach; Rinne",
         taetigkeit: "",
-        monat: "",
+        zeitraum: "Okt.–Dez. 2026",
         minuten: null,
         stundensatzCent: null,
         betragCent: 50000,
@@ -76,7 +124,7 @@ test("Semikolons, Anführungszeichen und Zeilenumbrüche in Namen bleiben in ihr
     summeCent: 50000,
   });
   expect(csv.split("\r\n")[1]).toBe(
-    'Zusatzauftrag mit Festbetrag;"Haus ""Sonne""; Eingang B\nHinterhof";"Dach; Rinne";;;;;;500,00',
+    'Zusatzauftrag mit Festbetrag;"Haus ""Sonne""; Eingang B\nHinterhof";"Dach; Rinne";;Okt.–Dez. 2026;;;;500,00',
   );
 });
 
@@ -88,7 +136,7 @@ test("Ein Name, der wie eine Formel beginnt, führt Excel nicht aus", () => {
         objekt: '=HYPERLINK("http://example.com")',
         zusatzauftrag: "-Keller",
         taetigkeit: "+Glas",
-        monat: "",
+        zeitraum: "Okt.–Dez. 2026",
         minuten: 30,
         stundensatzCent: 4000,
         betragCent: 2000,
@@ -97,6 +145,6 @@ test("Ein Name, der wie eine Formel beginnt, führt Excel nicht aus", () => {
     summeCent: 2000,
   });
   expect(csv.split("\r\n")[1]).toBe(
-    'Zusatzauftrag nach Stunden;"\'=HYPERLINK(""http://example.com"")";\'-Keller;\'+Glas;;0:30;30;40,00;20,00',
+    'Zusatzauftrag nach Stunden;"\'=HYPERLINK(""http://example.com"")";\'-Keller;\'+Glas;Okt.–Dez. 2026;0:30;30;40,00;20,00',
   );
 });

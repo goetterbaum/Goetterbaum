@@ -17,7 +17,7 @@ const namen = {
   ]),
 };
 
-test("Pauschalen je Monat und Stunden je Objekt und Tätigkeit werden mit Namen zu Zeilen", () => {
+test("Pauschalen je Monat und Stunden je Objekt und Tätigkeit werden mit Namen zu Zeilen, alle mit dem Monat als Zeitraum", () => {
   const ergebnis = rechnungsvorbereitung({
     kunde: { rundungsregel: "15-minuten", abrechnungszeitraum: "monatlich" },
     ersterMonat: "2026-03",
@@ -57,14 +57,14 @@ test("Pauschalen je Monat und Stunden je Objekt und Tätigkeit werden mit Namen 
     abgerechnetePauschalMonate: [],
   });
 
-  expect(rechnungsZeilen(ergebnis, namen)).toEqual({
+  expect(rechnungsZeilen(ergebnis, namen, { von: "2026-03", bis: "2026-03" })).toEqual({
     zeilen: [
       {
         position: "Pauschale",
         objekt: "Wohnanlage Ringstraße",
         zusatzauftrag: "",
         taetigkeit: "",
-        monat: "März 2026",
+        zeitraum: "März 2026",
         minuten: null,
         stundensatzCent: null,
         betragCent: 50000,
@@ -74,7 +74,7 @@ test("Pauschalen je Monat und Stunden je Objekt und Tätigkeit werden mit Namen 
         objekt: "Büro Domplatz",
         zusatzauftrag: "",
         taetigkeit: "Unterhaltsreinigung",
-        monat: "",
+        zeitraum: "März 2026",
         minuten: 75,
         stundensatzCent: 3000,
         betragCent: 3750,
@@ -84,7 +84,7 @@ test("Pauschalen je Monat und Stunden je Objekt und Tätigkeit werden mit Namen 
         objekt: "Büro Domplatz",
         zusatzauftrag: "",
         taetigkeit: "Glasreinigung",
-        monat: "",
+        zeitraum: "März 2026",
         minuten: 30,
         stundensatzCent: 3850,
         betragCent: 1925,
@@ -94,7 +94,7 @@ test("Pauschalen je Monat und Stunden je Objekt und Tätigkeit werden mit Namen 
   });
 });
 
-test("Zusatzaufträge stehen getrennt mit ihrer Beschreibung, nach Stunden mit Tätigkeit", () => {
+test("Zusatzaufträge stehen getrennt mit ihrer Beschreibung, nach Stunden mit Tätigkeit, beide mit dem Zeitraum", () => {
   const ergebnis = rechnungsvorbereitung({
     kunde: { rundungsregel: "15-minuten", abrechnungszeitraum: "monatlich" },
     ersterMonat: "2026-03",
@@ -147,13 +147,13 @@ test("Zusatzaufträge stehen getrennt mit ihrer Beschreibung, nach Stunden mit T
     abgerechnetePauschalMonate: [],
   });
 
-  expect(rechnungsZeilen(ergebnis, namen).zeilen).toEqual([
+  expect(rechnungsZeilen(ergebnis, namen, { von: "2026-03", bis: "2026-03" }).zeilen).toEqual([
     {
       position: "Pauschale",
       objekt: "Wohnanlage Ringstraße",
       zusatzauftrag: "",
       taetigkeit: "",
-      monat: "März 2026",
+      zeitraum: "März 2026",
       minuten: null,
       stundensatzCent: null,
       betragCent: 50000,
@@ -163,7 +163,7 @@ test("Zusatzaufträge stehen getrennt mit ihrer Beschreibung, nach Stunden mit T
       objekt: "Wohnanlage Ringstraße",
       zusatzauftrag: "Sturmschaden Dach",
       taetigkeit: "Unterhaltsreinigung",
-      monat: "",
+      zeitraum: "März 2026",
       minuten: 60,
       stundensatzCent: 3000,
       betragCent: 3000,
@@ -173,12 +173,118 @@ test("Zusatzaufträge stehen getrennt mit ihrer Beschreibung, nach Stunden mit T
       objekt: "Büro Domplatz",
       zusatzauftrag: "Grundreinigung nach Umbau",
       taetigkeit: "",
-      monat: "",
+      zeitraum: "März 2026",
       minuten: null,
       stundensatzCent: null,
       betragCent: 89000,
     },
   ]);
+});
+
+test("Quartalsweise: Pauschalen je Monat, Stunden und Zusatzaufträge mit dem ganzen Quartal als Zeitraum", () => {
+  const ergebnis = rechnungsvorbereitung({
+    kunde: { rundungsregel: "minutengenau", abrechnungszeitraum: "quartalsweise" },
+    ersterMonat: "2026-10",
+    objekte: [
+      { id: "o-pauschal", abrechnungsart: "pauschale", pauschaleCent: 50000 },
+      { id: "o-stunden", abrechnungsart: "stunden", pauschaleCent: null },
+    ],
+    taetigkeiten: [
+      { id: "t-unterhalt", standardStundensatzCent: 3000, kundenStundensatzCent: null },
+    ],
+    zusatzauftraege: [
+      {
+        id: "za-grund",
+        objektId: "o-stunden",
+        abrechnungsart: "festbetrag",
+        festbetragCent: 89000,
+        erledigt: true,
+      },
+    ],
+    zeiteintraege: [
+      {
+        id: "z1",
+        mitarbeiterId: "m1",
+        art: "taetigkeit",
+        objektId: "o-stunden",
+        taetigkeitId: "t-unterhalt",
+        zusatzauftragId: null,
+        // 30 Minuten im Oktober, 30 im Dezember
+        beginn: "2026-10-05T06:00:17+00:00",
+        ende: "2026-10-05T06:30:17+00:00",
+      },
+      {
+        id: "z2",
+        mitarbeiterId: "m1",
+        art: "taetigkeit",
+        objektId: "o-stunden",
+        taetigkeitId: "t-unterhalt",
+        zusatzauftragId: null,
+        beginn: "2026-12-14T07:15:42+00:00",
+        ende: "2026-12-14T07:45:42+00:00",
+      },
+    ],
+    abgerechnetePauschalMonate: [],
+  });
+
+  expect(
+    rechnungsZeilen(ergebnis, namen, { von: "2026-10", bis: "2026-12" }).zeilen.map((z) => [
+      z.position,
+      z.zeitraum,
+    ]),
+  ).toEqual([
+    ["Pauschale", "Oktober 2026"],
+    ["Pauschale", "November 2026"],
+    ["Pauschale", "Dezember 2026"],
+    ["Stunden", "Okt.–Dez. 2026"],
+    ["Zusatzauftrag mit Festbetrag", "Okt.–Dez. 2026"],
+  ]);
+});
+
+test("Ein Zeitraum über den Jahreswechsel nennt beide Jahre", () => {
+  const ergebnis = {
+    positionen: [
+      {
+        art: "zusatzauftrag-stunden" as const,
+        zusatzauftragId: "za-sturm",
+        objektId: "o-pauschal",
+        taetigkeitId: "t-unterhalt",
+        minuten: 90,
+        stundensatzCent: 3000,
+        betragCent: 4500,
+      },
+    ],
+    summeCent: 4500,
+    zeiteintragIds: [],
+    stundennachweis: [],
+  };
+  expect(
+    rechnungsZeilen(ergebnis, namen, { von: "2026-11", bis: "2027-02" }).zeilen[0].zeitraum,
+  ).toBe("Nov. 2026–Feb. 2027");
+  expect(
+    rechnungsZeilen(ergebnis, namen, { von: "2026-06", bis: "2026-09" }).zeilen[0].zeitraum,
+  ).toBe("Juni–Sept. 2026");
+});
+
+test("Ohne bekannten Zeitraum, z. B. beim Festbetrag ohne Zeit, bleibt er leer", () => {
+  const zeilen = rechnungsZeilen(
+    {
+      positionen: [
+        {
+          art: "zusatzauftrag-festbetrag",
+          zusatzauftragId: "za-grund",
+          objektId: "o-stunden",
+          betragCent: 89000,
+        },
+      ],
+      summeCent: 89000,
+      zeiteintragIds: [],
+      stundennachweis: [],
+    },
+    namen,
+    null,
+  ).zeilen;
+  expect(zeilen[0].zeitraum).toBe("");
 });
 
 test("Ohne bekannten Namen steht „unbekannt“ statt einer leeren Zelle", () => {
@@ -205,6 +311,7 @@ test("Ohne bekannten Namen steht „unbekannt“ statt einer leeren Zelle", () =
       stundennachweis: [],
     },
     namen,
+    { von: "2026-03", bis: "2026-03" },
   ).zeilen;
   expect(zeilen[0]).toMatchObject({ objekt: "unbekannt", taetigkeit: "unbekannt" });
   expect(zeilen[1]).toMatchObject({ objekt: "Büro Domplatz", zusatzauftrag: "unbekannt" });

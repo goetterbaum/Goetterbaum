@@ -74,7 +74,7 @@ async function Inhalt({ firmaId, id }: { firmaId: string; id: Promise<string> })
 function Ergebnis({ geladen }: { geladen: RechnungsvorbereitungFuerZusatzauftrag }) {
   const t = texte.rechnungsvorbereitung;
   const { kunde, zusatzauftrag, nichtFreigegeben } = geladen;
-  const zeilen = rechnungsZeilen(geladen.ergebnis, geladen.namen);
+  const zeilen = rechnungsZeilen(geladen.ergebnis, geladen.namen, geladen.monate);
 
   return (
     <>
@@ -107,7 +107,8 @@ function Ergebnis({ geladen }: { geladen: RechnungsvorbereitungFuerZusatzauftrag
           </p>
           <Stundennachweis
             href={`/rechnungsvorbereitung/zusatzauftrag/${zusatzauftrag.id}/stundennachweis`}
-            anzahlTage={geladen.ergebnis.stundennachweis.length}
+            tage={geladen.ergebnis.stundennachweis}
+            namen={geladen.namen}
           />
           {!zusatzauftrag.wartetAufFreigabe && (
             <>

@@ -14,7 +14,7 @@ export function Positionen({ zeilen, summeCent }: Zeilen) {
           <th>{t.spalteObjekt}</th>
           <th>{t.spalteZusatzauftrag}</th>
           <th>{t.spalteTaetigkeit}</th>
-          <th>{t.spalteMonat}</th>
+          <th>{t.spalteZeitraum}</th>
           <th>{t.spalteStunden}</th>
           <th>{t.spalteStundensatz}</th>
           <th>{t.spalteBetrag}</th>
@@ -27,7 +27,7 @@ export function Positionen({ zeilen, summeCent }: Zeilen) {
             <td>{z.objekt}</td>
             <td>{z.zusatzauftrag}</td>
             <td>{z.taetigkeit}</td>
-            <td>{z.monat}</td>
+            <td>{z.zeitraum}</td>
             <td>{z.minuten === null ? "" : t.stunden(stundenAlsText(z.minuten))}</td>
             <td>{z.stundensatzCent === null ? "" : euroAlsText(z.stundensatzCent)}</td>
             <td>{euroAlsText(z.betragCent)}</td>

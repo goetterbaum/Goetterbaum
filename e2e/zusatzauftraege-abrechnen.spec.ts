@@ -131,9 +131,9 @@ test("Ein Zusatzauftrag nach Stunden im Pauschal-Objekt erscheint getrennt, wird
   ).toContainText(new RegExp(`${k.taetigkeit}\\s*1:15 Std\\.\\s*30,00\\s€\\s*37,50\\s€`));
   await expect(page.locator("tfoot")).toContainText(/Summe\s*537,50\s€/);
   expect(await csvVon(page)).toBe(
-    "Position;Objekt;Zusatzauftrag;Tätigkeit;Monat;Stunden;Minuten;Stundensatz;Betrag\r\n" +
+    "Position;Objekt;Zusatzauftrag;Tätigkeit;Zeitraum;Stunden;Minuten;Stundensatz;Betrag\r\n" +
       `Pauschale;${k.pauschal.bezeichnung};;;März 2026;;;;500,00\r\n` +
-      `Zusatzauftrag nach Stunden;${k.pauschal.bezeichnung};${sturmschaden.beschreibung};${k.taetigkeit};;1:15;75;30,00;37,50\r\n` +
+      `Zusatzauftrag nach Stunden;${k.pauschal.bezeichnung};${sturmschaden.beschreibung};${k.taetigkeit};März 2026;1:15;75;30,00;37,50\r\n` +
       "Summe;;;;;;;;537,50\r\n",
   );
 
@@ -232,10 +232,10 @@ test("Ein Zusatzauftrag mit Festbetrag im Stunden-Objekt erscheint erst erledigt
   await expect(festbetrag).not.toContainText("Std.");
   await expect(page.locator("tfoot")).toContainText(/Summe\s*1\.405,00\s€/);
   expect(await csvVon(page)).toBe(
-    "Position;Objekt;Zusatzauftrag;Tätigkeit;Monat;Stunden;Minuten;Stundensatz;Betrag\r\n" +
+    "Position;Objekt;Zusatzauftrag;Tätigkeit;Zeitraum;Stunden;Minuten;Stundensatz;Betrag\r\n" +
       `Pauschale;${k.pauschal.bezeichnung};;;März 2026;;;;500,00\r\n` +
-      `Stunden;${k.stunden.bezeichnung};;${k.taetigkeit};;0:30;30;30,00;15,00\r\n` +
-      `Zusatzauftrag mit Festbetrag;${k.stunden.bezeichnung};${grundreinigung.beschreibung};;;;;;890,00\r\n` +
+      `Stunden;${k.stunden.bezeichnung};;${k.taetigkeit};März 2026;0:30;30;30,00;15,00\r\n` +
+      `Zusatzauftrag mit Festbetrag;${k.stunden.bezeichnung};${grundreinigung.beschreibung};;März 2026;;;;890,00\r\n` +
       "Summe;;;;;;;;1405,00\r\n",
   );
 

@@ -146,11 +146,21 @@ test("Ein erledigter Zusatzauftrag nach Stunden wird mit seiner Zeit aus allen M
   await expect(wartet).toHaveCount(0);
   await expect(
     zeile(page, "Zusatzauftrag nach Stunden", k.pauschal.bezeichnung, sturmschaden.beschreibung),
-  ).toContainText(new RegExp(`${k.taetigkeit}\\s*4:45 Std\\.\\s*30,00\\s€\\s*142,50\\s€`));
+  ).toContainText(
+    new RegExp(`${k.taetigkeit}\\s*Feb\\.–März 2026\\s*4:45 Std\\.\\s*30,00\\s€\\s*142,50\\s€`),
+  );
+  // Die Tagesliste zeigt seine drei Tage aus Februar und März.
+  await expect(
+    page
+      .getByRole("heading", { name: "Stundennachweis" })
+      .locator("xpath=following-sibling::table[1]")
+      .locator("tbody")
+      .getByRole("row"),
+  ).toHaveCount(3);
   await expect(page.locator("tfoot")).toContainText(/Summe\s*142,50\s€/);
   expect(await csvVon(page)).toBe(
-    "Position;Objekt;Zusatzauftrag;Tätigkeit;Monat;Stunden;Minuten;Stundensatz;Betrag\r\n" +
-      `Zusatzauftrag nach Stunden;${k.pauschal.bezeichnung};${sturmschaden.beschreibung};${k.taetigkeit};;4:45;285;30,00;142,50\r\n` +
+    "Position;Objekt;Zusatzauftrag;Tätigkeit;Zeitraum;Stunden;Minuten;Stundensatz;Betrag\r\n" +
+      `Zusatzauftrag nach Stunden;${k.pauschal.bezeichnung};${sturmschaden.beschreibung};${k.taetigkeit};Feb.–März 2026;4:45;285;30,00;142,50\r\n` +
       "Summe;;;;;;;;142,50\r\n",
   );
 
@@ -228,8 +238,8 @@ test("Ein erledigter Zusatzauftrag mit Festbetrag wird einzeln abgerechnet, ist 
   await expect(festbetrag).not.toContainText("Std.");
   await expect(page.locator("tfoot")).toContainText(/Summe\s*890,00\s€/);
   expect(await csvVon(page)).toBe(
-    "Position;Objekt;Zusatzauftrag;Tätigkeit;Monat;Stunden;Minuten;Stundensatz;Betrag\r\n" +
-      `Zusatzauftrag mit Festbetrag;${k.stunden.bezeichnung};${grundreinigung.beschreibung};;;;;;890,00\r\n` +
+    "Position;Objekt;Zusatzauftrag;Tätigkeit;Zeitraum;Stunden;Minuten;Stundensatz;Betrag\r\n" +
+      `Zusatzauftrag mit Festbetrag;${k.stunden.bezeichnung};${grundreinigung.beschreibung};;Feb.–März 2026;;;;890,00\r\n` +
       "Summe;;;;;;;;890,00\r\n",
   );
 

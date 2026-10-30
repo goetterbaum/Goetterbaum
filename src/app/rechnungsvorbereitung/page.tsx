@@ -94,7 +94,7 @@ async function Inhalt({
 function Ergebnis({ geladen }: { geladen: RechnungsvorbereitungAusAdresse }) {
   const t = texte.rechnungsvorbereitung;
   const { kunde, zeitraum, nichtFreigegeben } = geladen;
-  const zeilen = rechnungsZeilen(geladen.ergebnis, geladen.namen);
+  const zeilen = rechnungsZeilen(geladen.ergebnis, geladen.namen, zeitraum.monate);
   const auswahl = new URLSearchParams({ kunde: kunde.id, monat: zeitraum.ersterMonat });
   const zurFreigabe = new URLSearchParams({
     kunde: kunde.id,
@@ -125,7 +125,8 @@ function Ergebnis({ geladen }: { geladen: RechnungsvorbereitungAusAdresse }) {
           </p>
           <Stundennachweis
             href={`/rechnungsvorbereitung/stundennachweis?${auswahl}`}
-            anzahlTage={geladen.ergebnis.stundennachweis.length}
+            tage={geladen.ergebnis.stundennachweis}
+            namen={geladen.namen}
           />
           <p>{t.hinweisMarkieren}</p>
           <AktionsKnopf

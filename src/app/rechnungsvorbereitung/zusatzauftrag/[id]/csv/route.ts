@@ -26,7 +26,7 @@ export async function GET(
   }
 
   return csvDatei(
-    rechnungsCsv(rechnungsZeilen(geladen.ergebnis, geladen.namen)),
+    rechnungsCsv(rechnungsZeilen(geladen.ergebnis, geladen.namen, geladen.monate)),
     texte.rechnungsvorbereitung.csvDateinameEinzeln(
       geladen.kunde.name,
       geladen.zusatzauftrag.beschreibung,

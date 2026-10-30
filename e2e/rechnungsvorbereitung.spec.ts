@@ -75,15 +75,29 @@ async function kundeMitZeiten(firmaId: string) {
     pauschalObjekt: pauschal.bezeichnung,
     stundenObjekt: stunden.bezeichnung,
     taetigkeit: taetigkeit.name,
+    erster: erster.name,
+    zweiter: zweiter.name,
     // Der erste Eintrag vom 10.03. im Stunden-Objekt.
     eintragId: freigegebene[0],
   };
 }
 
+// Eine Zeile der Positionen (nicht der Tagesliste darunter).
 function zeile(page: Page, ...texte: string[]) {
   return texte.reduce(
     (zeilen, text) => zeilen.filter({ hasText: text }),
-    page.locator("tbody").getByRole("row"),
+    page.locator("table").filter({ hasText: "Stundensatz" }).locator("tbody").getByRole("row"),
+  );
+}
+
+// Eine Zeile der Tagesliste des Stundennachweises.
+function tag(page: Page, ...texte: string[]) {
+  const tagesliste = page
+    .getByRole("heading", { name: "Stundennachweis" })
+    .locator("xpath=following-sibling::table[1]");
+  return texte.reduce(
+    (zeilen, text) => zeilen.filter({ hasText: text }),
+    tagesliste.locator("tbody").getByRole("row"),
   );
 }
 
@@ -111,14 +125,31 @@ test("Das Büro sieht Pauschale und gerundete Stunden eines Kunden, wird vor Feh
 
   // Gerundet wird je Objekt, Tätigkeit und Tag: am 10.03. 106:29 Minuten →
   // 120, am 11.03. 12:05 → 15. Zusammen 2:15 Stunden zu 30 €.
-  await expect(page.locator("tbody").getByRole("row")).toHaveCount(2);
+  await expect(zeile(page)).toHaveCount(2);
   await expect(zeile(page, "Pauschale", kunde.pauschalObjekt, "März 2026")).toContainText(
     "500,00 €",
   );
   await expect(zeile(page, kunde.stundenObjekt, kunde.taetigkeit)).toContainText(
-    /2:15 Std\.\s*30,00\s€\s*67,50\s€/,
+    /März 2026\s*2:15 Std\.\s*30,00\s€\s*67,50\s€/,
   );
   await expect(page.locator("tfoot")).toContainText(/Summe\s*567,50\s€/);
+  await expect(page.getByRole("columnheader", { name: "Zeitraum" })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Monat" })).toHaveCount(0);
+
+  // Darunter die Tagesliste: je Tag gerundet, zusammen genau die 2:15
+  // Stunden der Position, ohne Namen und ohne die Zeit im Pauschal-Objekt.
+  await expect(tag(page)).toHaveCount(2);
+  await expect(tag(page, "10.03.2026", kunde.stundenObjekt, kunde.taetigkeit)).toContainText(
+    "2:00 Std.",
+  );
+  await expect(tag(page, "11.03.2026", kunde.stundenObjekt, kunde.taetigkeit)).toContainText(
+    "0:15 Std.",
+  );
+  await expect(page.getByText(kunde.erster)).toHaveCount(0);
+  await expect(page.getByText(kunde.zweiter)).toHaveCount(0);
+  await expect(
+    page.getByRole("link", { name: "Stundennachweis herunterladen (CSV-Datei)" }),
+  ).toBeVisible();
 
   // Die CSV-Datei hat dieselben Positionen.
   const herunterladen = page.waitForEvent("download");
@@ -128,9 +159,9 @@ test("Das Büro sieht Pauschale und gerundete Stunden eines Kunden, wird vor Feh
   const inhalt = await readFile((await datei.path())!);
   expect(inhalt.subarray(0, 3)).toEqual(Buffer.from([0xef, 0xbb, 0xbf]));
   expect(inhalt.toString("utf8").slice(1)).toBe(
-    "Position;Objekt;Zusatzauftrag;Tätigkeit;Monat;Stunden;Minuten;Stundensatz;Betrag\r\n" +
+    "Position;Objekt;Zusatzauftrag;Tätigkeit;Zeitraum;Stunden;Minuten;Stundensatz;Betrag\r\n" +
       `Pauschale;${kunde.pauschalObjekt};;;März 2026;;;;500,00\r\n` +
-      `Stunden;${kunde.stundenObjekt};;${kunde.taetigkeit};;2:15;135;30,00;67,50\r\n` +
+      `Stunden;${kunde.stundenObjekt};;${kunde.taetigkeit};März 2026;2:15;135;30,00;67,50\r\n` +
       "Summe;;;;;;;;567,50\r\n",
   );
 
@@ -140,13 +171,15 @@ test("Das Büro sieht Pauschale und gerundete Stunden eines Kunden, wird vor Feh
   await page.goto(`/rechnungsvorbereitung?kunde=${kunde.kundeId}&monat=2026-04`);
   await expect(page.getByRole("heading", { name: `${kunde.kundeName}: April 2026` })).toBeVisible();
   await expect(page.getByRole("alert").filter({ hasText: "Achtung" })).toHaveCount(0);
-  await expect(page.locator("tbody").getByRole("row")).toHaveCount(2);
+  await expect(zeile(page)).toHaveCount(2);
   await expect(zeile(page, "Pauschale", kunde.pauschalObjekt, "April 2026")).toContainText(
     "500,00 €",
   );
   await expect(zeile(page, kunde.stundenObjekt, kunde.taetigkeit)).toContainText(
-    /1:15 Std\.\s*30,00\s€\s*37,50\s€/,
+    /April 2026\s*1:15 Std\.\s*30,00\s€\s*37,50\s€/,
   );
+  await expect(tag(page)).toHaveCount(1);
+  await expect(tag(page, "02.04.2026")).toContainText("1:15 Std.");
   await expect(page.locator("tfoot")).toContainText(/Summe\s*537,50\s€/);
 
   // Mit eigener Rundungsregel des Kunden: minutengenau 106 + 12 Minuten.
@@ -162,6 +195,47 @@ test("Das Büro sieht Pauschale und gerundete Stunden eines Kunden, wird vor Feh
     /1:58 Std\.\s*30,00\s€\s*59,00\s€/,
   );
   await expect(page.locator("tfoot")).toContainText(/Summe\s*559,00\s€/);
+});
+
+test("Bei einem quartalsweise abgerechneten Kunden haben die Stunden das ganze Quartal als Zeitraum", async ({
+  page,
+}) => {
+  const { firmaA } = testdaten();
+  const buero = await legeEigenenZugangAn(firmaA.id, "buero");
+  const kunde = await kundeMitZeiten(firmaA.id);
+  const { error } = await dienstZugang()!
+    .from("kunde")
+    .update({ abrechnungszeitraum: "quartalsweise" })
+    .eq("id", kunde.kundeId);
+  if (error) throw error;
+
+  await meldeAn(page, buero);
+  await erwarteAngemeldet(page, buero.name);
+  await page.goto(`/rechnungsvorbereitung?kunde=${kunde.kundeId}&monat=2026-03`);
+  await expect(
+    page.getByRole("heading", { name: `${kunde.kundeName}: 1. Quartal 2026` }),
+  ).toBeVisible();
+  // Die Pauschale je Monat, die Stunden des Quartals in einer Position.
+  await expect(zeile(page)).toHaveCount(4);
+  for (const monat of ["Januar 2026", "Februar 2026", "März 2026"]) {
+    await expect(zeile(page, "Pauschale", monat)).toContainText("500,00 €");
+  }
+  await expect(zeile(page, kunde.stundenObjekt, kunde.taetigkeit)).toContainText(
+    /Jan\.–März 2026\s*2:15 Std\./,
+  );
+  await expect(tag(page)).toHaveCount(2);
+
+  const herunterladen = page.waitForEvent("download");
+  await page.getByRole("link", { name: "Als CSV-Datei herunterladen" }).click();
+  const inhalt = await readFile((await (await herunterladen).path())!);
+  expect(inhalt.toString("utf8").slice(1)).toBe(
+    "Position;Objekt;Zusatzauftrag;Tätigkeit;Zeitraum;Stunden;Minuten;Stundensatz;Betrag\r\n" +
+      `Pauschale;${kunde.pauschalObjekt};;;Januar 2026;;;;500,00\r\n` +
+      `Pauschale;${kunde.pauschalObjekt};;;Februar 2026;;;;500,00\r\n` +
+      `Pauschale;${kunde.pauschalObjekt};;;März 2026;;;;500,00\r\n` +
+      `Stunden;${kunde.stundenObjekt};;${kunde.taetigkeit};Jan.–März 2026;2:15;135;30,00;67,50\r\n` +
+      "Summe;;;;;;;;1567,50\r\n",
+  );
 });
 
 test("Ohne gewählten Monat wird der Vormonat vorgeschlagen", async ({ page }) => {
