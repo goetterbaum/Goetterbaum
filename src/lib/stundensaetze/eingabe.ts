@@ -10,19 +10,19 @@ export function stundensatzInCent(eingabe: string): number | null {
   return cent;
 }
 
-// Ein abweichender Stundensatz eines Kunden für eine Tätigkeit, wie er in
-// der Tabelle kunden_stundensatz steht (ohne Kunde, der kommt aus der Seite).
-export type KundenStundensatzDaten = {
+// Ein abweichender Stundensatz eines Kunden oder Objekts für eine
+// Tätigkeit, wie er in kunden_stundensatz bzw. objekt_stundensatz steht
+// (ohne Kunde bzw. Objekt, das kommt aus der Seite).
+export type StundensatzDaten = {
   taetigkeit_id: string;
   stundensatz_cent: number;
 };
 
-export type EingabeErgebnis =
-  { ok: true; daten: KundenStundensatzDaten } | { ok: false; fehler: string };
+export type EingabeErgebnis = { ok: true; daten: StundensatzDaten } | { ok: false; fehler: string };
 
-// Prüft die Angaben aus dem Formular beim Kunden. Ob die Tätigkeit zur
-// Firma gehört, prüfen die Server-Aktion und die Datenbank.
-export function pruefeKundenStundensatzEingabe(formData: FormData): EingabeErgebnis {
+// Prüft die Angaben aus dem Formular beim Kunden oder Objekt. Ob die
+// Tätigkeit zur Firma gehört, prüfen die Server-Aktion und die Datenbank.
+export function pruefeStundensatzEingabe(formData: FormData): EingabeErgebnis {
   const taetigkeit_id = String(formData.get("taetigkeit_id") ?? "").trim();
   if (!istId(taetigkeit_id)) {
     return { ok: false, fehler: texte.stundensaetze.fehlerTaetigkeit };

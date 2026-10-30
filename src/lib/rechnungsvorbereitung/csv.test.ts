@@ -72,6 +72,7 @@ test("Quartalsweise: Pauschalen mit ihrem Monat, Stunden mit dem ganzen Quartal 
     taetigkeiten: [
       { id: "t-unterhalt", standardStundensatzCent: 3000, kundenStundensatzCent: null },
     ],
+    objektStundensaetze: [],
     zusatzauftraege: [],
     zeiteintraege: [
       {

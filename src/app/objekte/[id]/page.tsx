@@ -11,6 +11,7 @@ import styles from "../../page.module.css";
 import { objektArchivieren, objektSpeichern } from "../actions";
 import { ObjektFormular } from "../objekt-formular";
 import { abrechnungAlsText } from "../objekt-tabelle";
+import { ObjektStundensaetze } from "../stundensaetze";
 
 export default function ObjektBearbeiten({ params }: PageProps<"/objekte/[id]">) {
   return (
@@ -74,6 +75,8 @@ async function Bearbeiten({ id: idVersprechen }: { id: Promise<string> }) {
         knopf={objekt.archiviert ? texte.stammdaten.aktivieren : texte.stammdaten.archivieren}
         knopfLaeuft={texte.stammdaten.speichernLaeuft}
       />
+
+      <ObjektStundensaetze supabase={supabase} objekt={objekt} />
 
       <Zusatzauftraege supabase={supabase} objekt={objekt} />
 
