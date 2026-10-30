@@ -7,7 +7,9 @@ import {
   zeitraumAusAdresse,
   type GeladenerArbeitszeitnachweis,
 } from "@/lib/auswertungen/verwaltung";
-import { datumAlsText } from "@/lib/berliner-zeit";
+import { Monatsauswahl } from "@/app/monatsauswahl";
+import { datumAlsText, heuteInBerlin } from "@/lib/berliner-zeit";
+import { monatAlsText, monatVon } from "@/lib/rechnungsvorbereitung/zeitraum";
 import { stundenAlsText } from "@/lib/rechnungsvorbereitung/zeilen";
 import { createClient } from "@/lib/supabase/server";
 import { artAlsText } from "@/lib/zeiterfassung/anzeige";
@@ -63,7 +65,14 @@ async function Inhalt({
               </option>
             ))}
           </select>
-        </label>{" "}
+        </label>
+        {/* Ohne gewählten Mitarbeiter trägt ein Monat nur die Daten ein. */}
+        <Monatsauswahl
+          gewaehlt={zeitraum.monat}
+          jahr={Number(zeitraum.von.slice(0, 4))}
+          aktuellerMonat={monatVon(heuteInBerlin())}
+          abschickenNurMit="mitarbeiter"
+        />
         <label>
           {t.von} <input type="date" name="von" defaultValue={zeitraum.von} required />
         </label>{" "}
@@ -90,7 +99,11 @@ function Nachweis({ geladen }: { geladen: GeladenerArbeitszeitnachweis }) {
 
   return (
     <>
-      <h2>{t.ueberschrift(name, datumAlsText(zeitraum.von), datumAlsText(zeitraum.bis))}</h2>
+      <h2>
+        {zeitraum.monat
+          ? t.ueberschriftMonat(name, monatAlsText(zeitraum.monat))
+          : t.ueberschrift(name, datumAlsText(zeitraum.von), datumAlsText(zeitraum.bis))}
+      </h2>
       {laufend > 0 && <p role="alert">{t.warnungLaufend(laufend)}</p>}
       {nachweis.tage.length === 0 ? (
         <p>{t.keine}</p>

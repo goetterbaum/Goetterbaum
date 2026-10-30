@@ -172,10 +172,9 @@ test("Das Büro sieht den Arbeitszeitnachweis eines deaktivierten Mitarbeiters m
     new RegExp(`mitarbeiter=${ehemaliger.id}&von=2026-03-01&bis=2026-03-31`),
   );
 
+  // Ein ganzer Monat steht mit seinem Namen in der Überschrift.
   await expect(
-    page.getByRole("heading", {
-      name: `${ehemaliger.name} (deaktiviert): 01.03.2026 bis 31.03.2026`,
-    }),
+    page.getByRole("heading", { name: `${ehemaliger.name} (deaktiviert) · März 2026` }),
   ).toBeVisible();
   await expect(page.getByRole("alert").filter({ hasText: "Achtung" })).toContainText(
     "1 Zeiteintrag im Zeitraum läuft noch",
@@ -206,6 +205,87 @@ test("Das Büro sieht den Arbeitszeitnachweis eines deaktivierten Mitarbeiters m
       "11.03.2026;;;Tagessumme;;;;;0:12;12\r\n" +
       "Summe;;;;;;;;1:59;119\r\n",
   );
+});
+
+test("Das Büro wählt im Arbeitszeitnachweis einen Monat per Button, mit gewähltem Mitarbeiter sofort angezeigt", async ({
+  page,
+}) => {
+  const { firmaA } = testdaten();
+  const dienst = dienstZugang()!;
+  const buero = await legeEigenenZugangAn(firmaA.id, "buero");
+  const ich = await legeEigenenZugangAn(firmaA.id);
+  const fahrt = (beginn: string, ende: string) =>
+    legeZeiteintragAn(dienst, { firmaId: firmaA.id, mitarbeiterId: ich.id, beginn, ende });
+  // 2024 ist ein Schaltjahr; im Februar gilt in Berlin die Winterzeit (UTC + 1).
+  await fahrt("2024-02-01T06:40:12Z", "2024-02-01T07:01:22Z");
+  await fahrt("2024-02-15T08:00:31Z", "2024-02-15T08:15:02Z");
+  await fahrt("2024-02-29T15:02:13Z", "2024-02-29T16:09:36Z");
+  // Schon im März: nicht im Februar.
+  await fahrt("2024-03-01T07:00:05Z", "2024-03-01T07:30:59Z");
+
+  await meldeAn(page, buero);
+  await erwarteAngemeldet(page, buero.name);
+  // Ein freier Zeitraum: Kein Monat ist hervorgehoben, das Jahr ist das des Von-Datums.
+  await page.goto("/auswertungen/arbeitszeitnachweis?von=2024-02-10&bis=2024-02-20");
+  const auswahl = page.getByRole("group", { name: "Monat wählen" });
+  const jahr = auswahl.getByText(/^\d{4}$/);
+  const monat = (name: string) => auswahl.getByRole("button", { name, exact: true });
+  await expect(jahr).toHaveText("2024");
+  await expect(auswahl.getByRole("button", { pressed: true })).toHaveCount(0);
+
+  // Ohne gewählten Mitarbeiter trägt ein Monat nur die Daten ein.
+  await monat("Februar").click();
+  await expect(feld(page, "Von")).toHaveValue("2024-02-01");
+  await expect(feld(page, "Bis")).toHaveValue("2024-02-29");
+  await expect(monat("Februar")).toHaveAttribute("aria-pressed", "true");
+  await expect(page).toHaveURL(/von=2024-02-10&bis=2024-02-20$/);
+  await expect(page.locator("table")).toHaveCount(0);
+
+  // Mit gewähltem Mitarbeiter zeigt ein Klick sofort den ganzen Monat.
+  await page.getByRole("combobox", { name: /^Mitarbeiter/ }).selectOption({ label: ich.name });
+  await monat("Februar").click();
+  await expect(page).toHaveURL(new RegExp(`mitarbeiter=${ich.id}&von=2024-02-01&bis=2024-02-29$`));
+  await expect(page.getByRole("heading", { name: `${ich.name} · Februar 2024` })).toBeVisible();
+  await expect(monat("Februar")).toHaveAttribute("aria-pressed", "true");
+  // Drei Tage mit je einer Zeile und der Tagessumme.
+  await expect(page.locator("tbody").getByRole("row")).toHaveCount(6);
+  await expect(zeile(page, "01.02.2024", "07:40", "08:01", "Fahrt")).toHaveCount(1);
+  await expect(zeile(page, "29.02.2024", "16:02", "17:09", "Fahrt")).toHaveCount(1);
+  await expect(zeile(page, "01.03.2024")).toHaveCount(0);
+
+  // Die freie Von-bis-Auswahl gilt weiter, mit den Daten in der Überschrift.
+  await feld(page, "Von").fill("2024-02-10");
+  await feld(page, "Bis").fill("2024-02-20");
+  await page.getByRole("button", { name: "Anzeigen" }).click();
+  await expect(
+    page.getByRole("heading", { name: `${ich.name}: 10.02.2024 bis 20.02.2024` }),
+  ).toBeVisible();
+  await expect(page.locator("tbody").getByRole("row")).toHaveCount(2);
+  await expect(zeile(page, "15.02.2024", "09:00", "09:15", "Fahrt")).toHaveCount(1);
+  await expect(auswahl.getByRole("button", { pressed: true })).toHaveCount(0);
+
+  // Das Jahr wechselt mit den Pfeilen.
+  await auswahl.getByRole("button", { name: "Folgejahr" }).click();
+  await expect(jahr).toHaveText("2025");
+  await auswahl.getByRole("button", { name: "Vorjahr" }).click();
+  await expect(jahr).toHaveText("2024");
+
+  // Im laufenden Jahr nach dem Kalender in Berlin sind spätere Monate ausgegraut.
+  const [jetztJahr, jetztMonat] = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin" })
+    .format(Date.now())
+    .split("-")
+    .map(Number);
+  const namen = [
+    ...["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August"],
+    ...["September", "Oktober", "November", "Dezember"],
+  ];
+  await page.goto(
+    `/auswertungen/arbeitszeitnachweis?mitarbeiter=${ich.id}&von=${jetztJahr}-01-01&bis=${jetztJahr}-01-31`,
+  );
+  await expect(jahr).toHaveText(String(jetztJahr));
+  await expect(monat(namen[jetztMonat - 1])).toBeEnabled();
+  if (jetztMonat < 12) await expect(monat(namen[jetztMonat])).toBeDisabled();
+  await expect(auswahl.getByRole("button", { name: "Folgejahr" })).toBeDisabled();
 });
 
 test("Das Büro sieht die tatsächlich erfasste Zeit eines Pauschal-Objekts je Tätigkeit", async ({

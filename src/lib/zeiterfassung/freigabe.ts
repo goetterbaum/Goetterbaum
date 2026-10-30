@@ -1,35 +1,25 @@
 // Die Freigabe von Zeiteinträgen durch das Büro: welche Einträge die
 // Prüfliste zeigt und welche freigegeben werden sollen. Tage gelten in
 // Berlin.
-import { berlinerDatum, berlinerMitternacht } from "@/lib/berliner-zeit";
+import {
+  auswertungsZeitraum,
+  type AuswertungsZeitraum,
+  type Parameter,
+} from "@/lib/auswertungen/zeitraum";
 import { istId } from "@/lib/id";
 import { texte } from "@/texte";
-import { istDatum } from "./nachtrag";
 
-// Was das Büro auf der Freigabe-Seite eingestellt hat. von und bis sind
-// Tage ("JJJJ-MM-TT"), beide eingeschlossen; ab und bisVor die Zeitpunkte
-// dazu als ISO-Text (Mitternacht am ersten Tag bzw. am Tag nach dem
-// letzten). Ohne Mitarbeiter, Kunde oder Objekt wird danach nicht gefiltert.
+// Was das Büro auf der Freigabe-Seite eingestellt hat: der Zeitraum wie bei
+// den Auswertungen (von, bis, monat, ab, bisVor) und die Filter. Ohne
+// Mitarbeiter, Kunde oder Objekt wird danach nicht gefiltert.
 // freigegebene: statt der wartenden die schon freigegebenen Einträge, um
 // eine Freigabe zurückzunehmen.
-export type FreigabeFilter = {
-  von: string;
-  bis: string;
+export type FreigabeFilter = AuswertungsZeitraum & {
   mitarbeiter: string | null;
   kunde: string | null;
   objekt: string | null;
   freigegebene: boolean;
-  ab: string;
-  bisVor: string;
 };
-
-type Parameter = Record<string, string | string[] | undefined>;
-
-// Ein Tag als "JJJJ-MM-TT"; Monat und Tag dürfen über ihre Grenzen
-// hinausgehen (Monat 0 ist der Dezember des Vorjahres).
-function datum(jahr: number, monat: number, tag: number): string {
-  return new Date(Date.UTC(jahr, monat - 1, tag)).toISOString().slice(0, 10);
-}
 
 // Ein einzelner Wert aus der Adresszeile; mehrfach angegeben zählt keiner.
 function einzeln(wert: string | string[] | undefined): string {
@@ -41,29 +31,15 @@ function kennung(wert: string | string[] | undefined): string | null {
   return istId(text) ? text : null;
 }
 
-// Liest die Einstellungen aus der Adresszeile. Ohne gültige Tage gilt der
-// Zeitraum vom Ersten des Vormonats bis heute: Zu Monatsbeginn prüft das
-// Büro meist den abgelaufenen Monat.
+// Liest die Einstellungen aus der Adresszeile. Ohne gültige Tage gilt wie
+// bei den Auswertungen der vorausgewählte Monat.
 export function freigabeFilter(parameter: Parameter, jetzt: number): FreigabeFilter {
-  const heute = berlinerDatum(jetzt);
-  const [jahr, monat] = heute.split("-").map(Number);
-  const tag = (name: string, vorgabe: string) => {
-    const text = einzeln(parameter[name]);
-    return istDatum(text) ? text : vorgabe;
-  };
-  // Tage als "JJJJ-MM-TT" lassen sich als Text vergleichen.
-  const [von, bis] = [tag("von", datum(jahr, monat - 1, 1)), tag("bis", heute)].sort();
-  const [bJahr, bMonat, bTag] = bis.split("-").map(Number);
-
   return {
-    von,
-    bis,
+    ...auswertungsZeitraum(parameter, jetzt),
     mitarbeiter: kennung(parameter.mitarbeiter),
     kunde: kennung(parameter.kunde),
     objekt: kennung(parameter.objekt),
     freigegebene: einzeln(parameter.freigegebene) === "ja",
-    ab: new Date(berlinerMitternacht(von)).toISOString(),
-    bisVor: new Date(berlinerMitternacht(datum(bJahr, bMonat, bTag + 1))).toISOString(),
   };
 }
 

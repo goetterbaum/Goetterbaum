@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { erwarteAngemeldet, meldeAb, meldeAn, testdaten } from "./testumgebung/hilfen";
+import { erwarteAngemeldet, feld, meldeAb, meldeAn, testdaten } from "./testumgebung/hilfen";
 import {
   dienstZugang,
   legeEigenenZugangAn,
@@ -32,8 +32,19 @@ async function eintrag(
     beginn,
     ende,
   });
-  return { id, bezeichnung: objekt.bezeichnung };
+  return { id, bezeichnung: objekt.bezeichnung, kundeId: objekt.kundeId };
 }
+
+// Ein Tag in Berlin als "JJJJ-MM-TT".
+const berlinerTag = (zeitpunkt: number) =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin" }).format(zeitpunkt);
+
+// Die letzten zwei Tage: Ohne Angabe zeigt die Freigabe bis zum 10. den
+// ganzen Vormonat, ein Eintrag von gestern fehlte dann.
+const letzteTage = () => ({
+  von: berlinerTag(Date.now() - 48 * STUNDE),
+  bis: berlinerTag(Date.now()),
+});
 
 async function freigegebenVon(id: string) {
   const { data } = await dienstZugang()!
@@ -68,6 +79,9 @@ test("Das Büro gibt Einträge einzeln und gesammelt frei, der Mitarbeiter sieht
 
   // Nur die Einträge des gewählten Mitarbeiters.
   // Der Name einer Auswahlliste endet mit dem gewählten Eintrag.
+  const zeitraum = letzteTage();
+  await feld(page, "Von").fill(zeitraum.von);
+  await feld(page, "Bis").fill(zeitraum.bis);
   await page.getByRole("combobox", { name: /^Mitarbeiter/ }).selectOption({ label: ich.name });
   await page.getByRole("button", { name: "Anzeigen" }).click();
   await expect(page).toHaveURL(new RegExp(`mitarbeiter=${ich.id}`));
@@ -125,7 +139,7 @@ test("Das Büro gibt Einträge einzeln und gesammelt frei, der Mitarbeiter sieht
   await meldeAb(page);
   await meldeAn(page, buero);
   await erwarteAngemeldet(page, buero.name);
-  await page.goto("/freigabe");
+  await page.goto(`/freigabe?von=${zeitraum.von}&bis=${zeitraum.bis}`);
   await page.getByRole("combobox", { name: /^Mitarbeiter/ }).selectOption({ label: ich.name });
   await page.getByRole("checkbox", { name: "Freigegebene zeigen" }).check();
   await page.getByRole("button", { name: "Anzeigen" }).click();
@@ -148,4 +162,66 @@ test("Das Büro gibt Einträge einzeln und gesammelt frei, der Mitarbeiter sieht
     page.getByText(/^Freigegeben: \d{2}\.\d{2}\.\d{4}, \d{2}:\d{2} → –$/).filter({ visible: true }),
   ).toBeVisible();
   expect(await freigegebenVon(erster.id)).toBeNull();
+});
+
+test("Das Büro wählt in der Freigabe einen Monat, die übrigen Filter bleiben, und geht mit Kunde und Monat zur Rechnungsvorbereitung", async ({
+  page,
+}) => {
+  const { firmaA } = testdaten();
+  const buero = await legeEigenenZugangAn(firmaA.id, "buero");
+  const ich = await legeEigenenZugangAn(firmaA.id);
+  const kollege = await legeEigenenZugangAn(firmaA.id);
+  // 2024 ist ein Schaltjahr; im Februar gilt in Berlin die Winterzeit (UTC + 1).
+  const amLetzten = await eintrag(
+    firmaA.id,
+    ich.id,
+    "2024-02-29T15:02:13Z",
+    "2024-02-29T16:09:36Z",
+  );
+  const vomKollegen = await eintrag(
+    firmaA.id,
+    kollege.id,
+    "2024-02-12T07:00:41Z",
+    "2024-02-12T08:30:17Z",
+  );
+  // 00:10 am 1.03. in Berlin: schon März.
+  const imMaerz = await eintrag(firmaA.id, ich.id, "2024-02-29T23:10:07Z", "2024-03-01T01:00:52Z");
+
+  await meldeAn(page, buero);
+  await erwarteAngemeldet(page, buero.name);
+  await page.goto(`/freigabe?von=2024-03-01&bis=2024-03-31&mitarbeiter=${ich.id}`);
+  const auswahl = page.getByRole("group", { name: "Monat wählen" });
+  const monat = (name: string) => auswahl.getByRole("button", { name, exact: true });
+  const zeile = (bezeichnung: string) => page.getByRole("row").filter({ hasText: bezeichnung });
+  await expect(auswahl.getByText(/^\d{4}$/)).toHaveText("2024");
+  await expect(monat("März")).toHaveAttribute("aria-pressed", "true");
+  await expect(zeile(imMaerz.bezeichnung)).toHaveCount(1);
+
+  // Ein Klick zeigt sofort den ganzen Februar, der Mitarbeiter bleibt gewählt.
+  await monat("Februar").click();
+  await expect(page).toHaveURL(/von=2024-02-01&bis=2024-02-29&/);
+  await expect(page).toHaveURL(new RegExp(`mitarbeiter=${ich.id}`));
+  await expect(monat("Februar")).toHaveAttribute("aria-pressed", "true");
+  await expect(monat("März")).toHaveAttribute("aria-pressed", "false");
+  await expect(zeile(amLetzten.bezeichnung)).toHaveCount(1);
+  await expect(zeile(imMaerz.bezeichnung)).toHaveCount(0);
+  await expect(zeile(vomKollegen.bezeichnung)).toHaveCount(0);
+
+  // Ohne Kunde übernimmt der Button nur den Monat des Von-Datums.
+  const zurRechnungsvorbereitung = page.getByRole("link", { name: "Zur Rechnungsvorbereitung" });
+  await expect(zurRechnungsvorbereitung).toHaveAttribute(
+    "href",
+    "/rechnungsvorbereitung?monat=2024-02",
+  );
+
+  // Mit Kunde übernimmt er beides; die Rechnungsvorbereitung zeigt den Monat.
+  await page.getByRole("combobox", { name: /^Kunde/ }).selectOption(amLetzten.kundeId);
+  await page.getByRole("button", { name: "Anzeigen" }).click();
+  await expect(page).toHaveURL(new RegExp(`kunde=${amLetzten.kundeId}`));
+  await zurRechnungsvorbereitung.click();
+  await expect(page).toHaveURL(
+    new RegExp(`/rechnungsvorbereitung\?kunde=${amLetzten.kundeId}&monat=2024-02$`),
+  );
+  await expect(page.getByRole("combobox", { name: /^Kunde/ })).toHaveValue(amLetzten.kundeId);
+  await expect(feld(page, "Monat")).toHaveValue("2024-02");
 });

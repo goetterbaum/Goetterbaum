@@ -430,6 +430,7 @@ export const texte = {
     anzeigen: "Anzeigen",
     keine: "In diesem Zeitraum wartet kein Zeiteintrag auf Freigabe.",
     freigegebeneZeigen: "Freigegebene zeigen",
+    zurRechnungsvorbereitung: "Zur Rechnungsvorbereitung",
     hinweisFreigegebene:
       "Schon freigegebene Zeiteinträge im gewählten Zeitraum. Eine Freigabe nimmst du im Protokoll des Eintrags zurück.",
     keineFreigegebenen: "In diesem Zeitraum ist noch kein Zeiteintrag freigegeben.",
@@ -620,6 +621,7 @@ export const texte = {
     anzeigen: "Anzeigen",
     mitarbeiterNichtGefunden: "Diesen Mitarbeiter gibt es nicht.",
     ueberschrift: (name: string, von: string, bis: string) => `${name}: ${von} bis ${bis}`,
+    ueberschriftMonat: (name: string, monat: string) => `${name} · ${monat}`,
     keine: "In diesem Zeitraum gibt es keine beendeten Zeiteinträge.",
     warnungLaufend: (anzahl: number) =>
       anzahl === 1
@@ -693,6 +695,27 @@ export const texte = {
     monatlich: "Monatlich",
     quartalsweise: "Quartalsweise",
   } satisfies Record<Abrechnungszeitraum, string>,
+  monatsauswahl: {
+    beschriftung: "Monat wählen",
+    vorjahr: "Vorjahr",
+    folgejahr: "Folgejahr",
+    pfeilVorjahr: "‹",
+    pfeilFolgejahr: "›",
+    monate: [
+      "Januar",
+      "Februar",
+      "März",
+      "April",
+      "Mai",
+      "Juni",
+      "Juli",
+      "August",
+      "September",
+      "Oktober",
+      "November",
+      "Dezember",
+    ],
+  },
   sparten: {
     reinigung: "Reinigung",
     garten: "Garten",
