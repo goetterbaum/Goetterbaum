@@ -128,7 +128,9 @@ test("Ein Zusatzauftrag nach Stunden im Pauschal-Objekt erscheint getrennt, wird
   );
   await expect(
     zeile(page, "Zusatzauftrag nach Stunden", k.pauschal.bezeichnung, sturmschaden.beschreibung),
-  ).toContainText(new RegExp(`${k.taetigkeit}\\s*1:15 Std\\.\\s*30,00\\s€\\s*37,50\\s€`));
+  ).toContainText(
+    new RegExp(`${k.taetigkeit}\\s*März 2026\\s*1:15 Std\\.\\s*30,00\\s€\\s*37,50\\s€`),
+  );
   await expect(page.locator("tfoot")).toContainText(/Summe\s*537,50\s€/);
   expect(await csvVon(page)).toBe(
     "Position;Objekt;Zusatzauftrag;Tätigkeit;Zeitraum;Stunden;Minuten;Stundensatz;Betrag\r\n" +
