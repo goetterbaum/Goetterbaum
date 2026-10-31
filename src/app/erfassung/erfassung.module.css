@@ -95,6 +95,13 @@
   font-size: 1.375rem;
 }
 
+/* Pause: unterbricht nur, deshalb zurückhaltend. */
+.pause {
+  min-height: 56px;
+  background: var(--gedaempft);
+  font-size: 1.375rem;
+}
+
 .laufend {
   display: flex;
   flex-direction: column;

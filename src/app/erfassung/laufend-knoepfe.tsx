@@ -4,12 +4,12 @@ import { useState } from "react";
 import { KnopfMitRueckfrage } from "@/app/knopf-mit-rueckfrage";
 import { fahrtWirdGespeichert, MINI_FAHRT_MINUTEN } from "@/lib/zeiterfassung/live-erfassung";
 import { texte } from "@/texte";
-import { arbeitstagBeenden, fertigHier } from "./actions";
+import { arbeitstagBeenden, fertigHier, pauseMachen } from "./actions";
 import styles from "./erfassung.module.css";
 import { Fehlermeldung, ohneAbsturz, useErfassungsAktion } from "./erfassungs-aktion";
 
-// Die Knöpfe beim laufenden Zeiteintrag. fuer ist jeweils der Mitarbeiter,
-// dessen Zeit erfasst wird.
+// Die Knöpfe beim laufenden Zeiteintrag und nach einer Pause. fuer ist
+// jeweils der Mitarbeiter, dessen Zeit erfasst wird.
 
 export function FertigHierKnopf({ fuer }: { fuer: string }) {
   const [zustand, ausfuehren, laeuft] = useErfassungsAktion(fertigHier.bind(null, fuer), {
@@ -27,7 +27,26 @@ export function FertigHierKnopf({ fuer }: { fuer: string }) {
   );
 }
 
-// fahrtSeit: Beginn der laufenden Fahrt, leer bei einem Objekt.
+// Ohne Rückfrage: Nach einer Pause geht es mit Start, „Fahrt starten“ oder
+// „Arbeitstag beenden“ weiter.
+export function PauseKnopf({ fuer }: { fuer: string }) {
+  const [zustand, ausfuehren, laeuft] = useErfassungsAktion(pauseMachen.bind(null, fuer), {
+    ohneNetz: texte.erfassung.ohneNetzPause,
+    nichtGespeichert: texte.erfassung.fehlerPause,
+  });
+
+  return (
+    <form action={ausfuehren}>
+      <button type="submit" className={`${styles.gross} ${styles.pause}`} disabled={laeuft}>
+        {laeuft ? texte.erfassung.pauseLaeuft : texte.erfassung.pause}
+      </button>
+      <Fehlermeldung zustand={zustand} />
+    </form>
+  );
+}
+
+// fahrtSeit: Beginn der laufenden Fahrt, leer bei einem Objekt und nach
+// einer Pause.
 export function ArbeitstagBeendenKnopf({
   fuer,
   fahrtSeit,
