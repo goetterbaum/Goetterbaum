@@ -115,13 +115,13 @@ test("Büro trägt Arbeitgeberkosten ein und sieht in der Kostenanalyse die rich
     const objekte = page.locator("tbody tr td:first-child").filter({ visible: true });
     await expect(objekte).toHaveText([villa.bezeichnung, pauschal.bezeichnung]);
     await expect(zeile(page, villa.bezeichnung)).toHaveText(
-      /90,00 €\s*3:00 Std\.\s*88,00 €\s*0:30 Std\.\s*15,50 €\s*-13,50 €\s*-15,0\s*vorläufig/,
+      /90,00\s€\s*3:00\sStd\.\s*88,00\s€\s*0:30\sStd\.\s*15,50\s€\s*-13,50\s€\s*-15,0\s*vorläufig/,
     );
     await expect(zeile(page, pauschal.bezeichnung)).toHaveText(
-      /500,00 €\s*2:00 Std\.\s*62,00 €\s*0:30 Std\.\s*15,50 €\s*422,50 €\s*84,5\s*vorläufig/,
+      /500,00\s€\s*2:00\sStd\.\s*62,00\s€\s*0:30\sStd\.\s*15,50\s€\s*422,50\s€\s*84,5\s*vorläufig/,
     );
     await expect(zeile(page, `Summe ${kunde!.name}`)).toHaveText(
-      /590,00 €\s*5:00 Std\.\s*150,00 €\s*1:00 Std\.\s*31,00 €\s*409,00 €\s*69,3\s*vorläufig/,
+      /590,00\s€\s*5:00\sStd\.\s*150,00\s€\s*1:00\sStd\.\s*31,00\s€\s*409,00\s€\s*69,3\s*vorläufig/,
     );
     await expect(zeile(page, "Gesamtsumme")).toContainText("409,00 €");
 
@@ -146,10 +146,10 @@ test("Büro trägt Arbeitgeberkosten ein und sieht in der Kostenanalyse die rich
       page.getByRole("heading", { name: `${villa.bezeichnung}: September 2026` }),
     ).toBeVisible();
     await expect(zeile(page, "14.09.2026", `${anna.name} (eigener Wert)`)).toHaveText(
-      /08:00–10:00\s*2:00 Std\.\s*0:30 Std\.\s*77,50 €\s*60,00 €\s*vorläufig/,
+      /08:00–10:00\s*2:00\sStd\.\s*0:30\sStd\.\s*77,50\s€\s*60,00\s€\s*vorläufig/,
     );
     await expect(zeile(page, "15.09.2026", `${ben.name} (Standard)`)).toHaveText(
-      /08:00–09:00\s*1:00 Std\.\s*0:00 Std\.\s*26,00 €\s*30,00 €\s*vorläufig/,
+      /08:00–09:00\s*1:00\sStd\.\s*0:00\sStd\.\s*26,00\s€\s*30,00\s€\s*vorläufig/,
     );
 
     // Das ganze Jahr: zwölf Pauschalen.
