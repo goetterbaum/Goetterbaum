@@ -50,12 +50,6 @@ export function kostenTag(parameter: Parameter, jetzt: number): string {
   return istDatum(datum) ? datum : berlinerDatum(jetzt);
 }
 
-// Der Tag, der `tage` Tage vor (negativ) oder nach `datum` liegt.
-export function tagVerschoben(datum: string, tage: number): string {
-  const [jahr, monat, tag] = datum.split("-").map(Number);
-  return new Date(Date.UTC(jahr, monat - 1, tag + tage)).toISOString().slice(0, 10);
-}
-
 // Der Monat, in dem ein Tag liegt, als Zeitraum.
 export function monatDerKosten(datum: string): KostenZeitraum {
   return einMonat(datum.slice(0, 7));

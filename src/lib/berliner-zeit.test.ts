@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { berlinerUhrzeit, berlinerZeitpunkt } from "./berliner-zeit";
+import { berlinerUhrzeit, berlinerZeitpunkt, tagVerschoben } from "./berliner-zeit";
 
 test("Eine Uhrzeit in Berlin wird zum richtigen Zeitpunkt, im Sommer wie im Winter", () => {
   // Sommerzeit: UTC + 2 Stunden, Winterzeit: UTC + 1 Stunde.
@@ -40,4 +40,11 @@ test("Die Uhrzeit in Berlin zu einem Zeitpunkt, als Stunden und Minuten", () => 
   expect(berlinerUhrzeit(Date.parse("2026-10-16T06:15:00Z"))).toBe("08:15");
   expect(berlinerUhrzeit(Date.parse("2026-12-01T22:59:00Z"))).toBe("23:59");
   expect(berlinerUhrzeit(Date.parse("2026-10-15T22:05:00Z"))).toBe("00:05");
+});
+
+test("Mit ‹ › geht es einen Tag zurück oder vor, auch über Monats- und Jahresgrenzen", () => {
+  expect(tagVerschoben("2026-03-01", -1)).toBe("2026-02-28");
+  expect(tagVerschoben("2026-12-31", 1)).toBe("2027-01-01");
+  // Die Zeitumstellung am 25.10.2026 ändert nichts.
+  expect(tagVerschoben("2026-10-25", 1)).toBe("2026-10-26");
 });

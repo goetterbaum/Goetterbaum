@@ -298,7 +298,7 @@ export type Tagesansicht = {
   // Nach dem Beginn ihres ersten Arbeitstags.
   mitarbeiter: {
     mitarbeiterId: string;
-    // Nach Beginn; zwei bei geteiltem Dienst.
+    // Nach Beginn; zwei, wenn der Mitarbeiter am Tag zweimal beginnt.
     arbeitstage: {
       // Beginn des ersten und Ende des letzten Zeiteintrags.
       beginn: string;
@@ -323,7 +323,6 @@ export type Tagesansicht = {
 // Einträge verteilt.
 export function tagesansicht(eingabe: TagesEingabe, datum: string, heute: string): Tagesansicht {
   const alleTage = arbeitstage(eingabe.zeiteintraege);
-  const tagDes = new Map(alleTage.flatMap((t) => t.map((z) => [z.id, tagDesBeginns(t)] as const)));
   const tage = alleTage
     .filter((t) => tagDesBeginns(t) === datum)
     .sort((a, b) => Date.parse(a[0].beginn) - Date.parse(b[0].beginn));
@@ -348,32 +347,12 @@ export function tagesansicht(eingabe: TagesEingabe, datum: string, heute: string
       .map((e) => [e.zeiteintragId, e]),
   );
 
-  // Die Pauschale des Monats, in dem der Arbeitstag beginnt, nach Minuten
-  // auf alle Einträge der Arbeitstage dieses Monats im Objekt.
   const monat = datum.slice(0, 7);
   const pauschaleOffen = monat >= heute.slice(0, 7);
-  const pauschalen = new Map(
-    alleZeilen(kostenanalyse({ ...eingabe, monate: [monat] }))
-      .filter((zeile) => zeile.zusatzauftragId === null)
-      .map((zeile) => [zeile.objektId, zeile.einnahmenCent]),
-  );
   const pauschalObjekte = new Set(
     eingabe.objekte.filter((o) => o.abrechnungsart === "pauschale").map((o) => o.id),
   );
-  const pauschalAnteil = new Map<string, number>();
-  for (const objektId of pauschalObjekte) {
-    const imMonat = eingabe.zeiteintraege.filter(
-      (z) =>
-        z.art === "taetigkeit" &&
-        z.objektId === objektId &&
-        z.zusatzauftragId === null &&
-        tagDes.get(z.id)!.slice(0, 7) === monat,
-    );
-    verteile(
-      pauschalen.get(objektId) ?? 0,
-      imMonat.map((z) => Date.parse(z.ende) - Date.parse(z.beginn)),
-    ).forEach((cent, i) => pauschalAnteil.set(imMonat[i].id, cent));
-  }
+  const pauschalAnteil = pauschalAnteile(eingabe, alleTage, pauschalObjekte, monat);
 
   const mitarbeiter: Tagesansicht["mitarbeiter"] = [];
   for (const tag of tage) {
@@ -464,6 +443,40 @@ export function arbeitstage<T extends ZeiteintragFuerKosten>(zeiteintraege: T[])
     vorher = z;
   }
   return tage;
+}
+
+// Die Pauschale des Monats je Eintrags-Kennung: nach Minuten auf alle
+// Einträge der Pauschal-Objekte aus Arbeitstagen, die in diesem Monat
+// beginnen, auch wenn ein Eintrag schon im nächsten Monat liegt.
+function pauschalAnteile(
+  eingabe: TagesEingabe,
+  alleTage: ZeiteintragFuerKosten[][],
+  pauschalObjekte: Set<string>,
+  monat: Monat,
+): Map<string, number> {
+  const monatDes = new Map(
+    alleTage.flatMap((t) => t.map((z) => [z.id, tagDesBeginns(t).slice(0, 7)] as const)),
+  );
+  const pauschalen = new Map(
+    alleZeilen(kostenanalyse({ ...eingabe, monate: [monat] }))
+      .filter((zeile) => zeile.zusatzauftragId === null)
+      .map((zeile) => [zeile.objektId, zeile.einnahmenCent]),
+  );
+  const anteile = new Map<string, number>();
+  for (const objektId of pauschalObjekte) {
+    const imMonat = eingabe.zeiteintraege.filter(
+      (z) =>
+        z.art === "taetigkeit" &&
+        z.objektId === objektId &&
+        z.zusatzauftragId === null &&
+        monatDes.get(z.id) === monat,
+    );
+    verteile(
+      pauschalen.get(objektId) ?? 0,
+      imMonat.map((z) => Date.parse(z.ende) - Date.parse(z.beginn)),
+    ).forEach((cent, i) => anteile.set(imMonat[i].id, cent));
+  }
+  return anteile;
 }
 
 // Der Kalendertag in Berlin, zu dem ein Arbeitstag zählt: der Tag seines

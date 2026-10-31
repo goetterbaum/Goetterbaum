@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { kostenTag, kostenZeitraum, tagVerschoben } from "./zeitraum";
+import { kostenTag, kostenZeitraum } from "./zeitraum";
 
 // 31.10.2026, 14:00 in Berlin.
 const JETZT = Date.parse("2026-10-31T14:00:00+01:00");
@@ -51,11 +51,4 @@ test("Der Tag der Tagesansicht kommt aus der Adresszeile, sonst ist es heute in 
   for (const parameter of [{}, { datum: "2026-02-30" }, { datum: "gestern" }]) {
     expect(kostenTag(parameter, kurzVorMitternacht)).toBe("2026-11-01");
   }
-});
-
-test("Mit ‹ › geht es einen Tag zurück oder vor, auch über Monats- und Jahresgrenzen", () => {
-  expect(tagVerschoben("2026-03-01", -1)).toBe("2026-02-28");
-  expect(tagVerschoben("2026-12-31", 1)).toBe("2027-01-01");
-  // Die Zeitumstellung am 25.10.2026 ändert nichts.
-  expect(tagVerschoben("2026-10-25", 1)).toBe("2026-10-26");
 });

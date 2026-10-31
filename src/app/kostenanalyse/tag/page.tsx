@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Fragment, Suspense } from "react";
 import { NurFuerBuero } from "@/app/nur-fuer-buero";
-import { berlinerUhrzeit, datumAlsText } from "@/lib/berliner-zeit";
+import { berlinerUhrzeit, datumAlsText, tagVerschoben } from "@/lib/berliner-zeit";
 import { euroAlsText } from "@/lib/geld";
 import type { Bewertung, Tagesansicht } from "@/lib/kostenanalyse";
 import { ladeTagesansicht, type Namen } from "@/lib/kostenanalyse/verwaltung";
@@ -11,7 +11,7 @@ import {
   name,
   stundenFuerSeite as stunden,
 } from "@/lib/kostenanalyse/zeilen";
-import { monatDerKosten, tagVerschoben } from "@/lib/kostenanalyse/zeitraum";
+import { monatDerKosten } from "@/lib/kostenanalyse/zeitraum";
 import { createClient } from "@/lib/supabase/server";
 import { texte } from "@/texte";
 import styles from "../../page.module.css";
