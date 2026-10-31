@@ -350,6 +350,7 @@ test("Ein Zusatzauftrag nach Stunden in einem Pauschal-Objekt wird je Zusatzauft
           objektId: "buero-haus",
           abrechnungsart: "stunden",
           festbetragCent: null,
+          stundensatzCent: null,
           erledigt: false,
         },
       ],
@@ -394,6 +395,7 @@ test("Zeit für einen Zusatzauftrag wird getrennt von der regulären Zeit gerund
           objektId: "villa",
           abrechnungsart: "stunden",
           festbetragCent: null,
+          stundensatzCent: null,
           erledigt: false,
         },
       ],
@@ -421,6 +423,7 @@ test("Ein erledigter Zusatzauftrag mit Festbetrag erscheint einmal mit seinem Be
           objektId: "villa",
           abrechnungsart: "festbetrag",
           festbetragCent: 89000,
+          stundensatzCent: null,
           erledigt: true,
         },
       ],
@@ -459,6 +462,7 @@ test("Ein noch offener Zusatzauftrag mit Festbetrag wird noch nicht abgerechnet"
           objektId: "villa",
           abrechnungsart: "festbetrag",
           festbetragCent: 89000,
+          stundensatzCent: null,
           erledigt: false,
         },
       ],
@@ -574,6 +578,7 @@ test("Mit dem Festbetrag gilt auch die Zeit aus früheren Monaten als abgerechne
           objektId: "villa",
           abrechnungsart: "festbetrag",
           festbetragCent: 89000,
+          stundensatzCent: null,
           erledigt: true,
         },
       ],
@@ -622,6 +627,7 @@ function einzeln(
       objektId: "buero-haus",
       abrechnungsart: "stunden",
       festbetragCent: null,
+      stundensatzCent: null,
       erledigt: true,
       ...zusatzauftrag,
     },
@@ -709,6 +715,7 @@ test("Einzeln abgerechnet ergibt ein Festbetrag nur seinen Betrag und umfasst se
         objektId: "villa",
         abrechnungsart: "festbetrag",
         festbetragCent: 89000,
+        stundensatzCent: null,
       },
       [
         eintrag("2026-02-23T08:03:41+01:00", "2026-02-23T12:47:12+01:00", {
@@ -813,6 +820,7 @@ test("Ein Zusatzauftrag nach Stunden im Pauschal-Objekt nutzt den Stundensatz de
           objektId: "buero-haus",
           abrechnungsart: "stunden",
           festbetragCent: null,
+          stundensatzCent: null,
           erledigt: false,
         },
       ],
@@ -876,4 +884,127 @@ test("Einzeln abgerechnet nutzt ein Zusatzauftrag nach Stunden den Stundensatz d
     { taetigkeitId: "rasen", minuten: 45, stundensatzCent: 4500, betragCent: 3375 },
   ]);
   expect(ergebnis.summeCent).toBe(6725);
+});
+
+test("Ein eigener Stundensatz des Zusatzauftrags gilt für alle seine Tätigkeiten vor Objekt, Kunde und Standard", () => {
+  const ergebnis = rechnungsvorbereitung(
+    eingabe({
+      objekte: [stundenObjekt],
+      taetigkeiten: [
+        { id: "reinigung", standardStundensatzCent: 3000, kundenStundensatzCent: null },
+        { id: "rasen", standardStundensatzCent: 4000, kundenStundensatzCent: 4500 },
+      ],
+      objektStundensaetze: [
+        { objektId: "villa", taetigkeitId: "reinigung", stundensatzCent: 2400 },
+      ],
+      zusatzauftraege: [
+        {
+          id: "sturmschaden",
+          objektId: "villa",
+          abrechnungsart: "stunden",
+          festbetragCent: null,
+          stundensatzCent: 5500,
+          erledigt: false,
+        },
+        // Ohne eigenen Satz gilt Objekt, dann Kunde, dann Standard.
+        {
+          id: "hecke",
+          objektId: "villa",
+          abrechnungsart: "stunden",
+          festbetragCent: null,
+          stundensatzCent: null,
+          erledigt: false,
+        },
+      ],
+      zeiteintraege: [
+        eintrag("2026-07-08T13:04:51+02:00", "2026-07-08T14:31:07+02:00", {
+          taetigkeitId: "rasen",
+          zusatzauftragId: "sturmschaden",
+        }),
+        eintrag("2026-07-08T14:40:22+02:00", "2026-07-08T15:10:09+02:00", {
+          zusatzauftragId: "sturmschaden",
+        }),
+        eintrag("2026-07-09T08:00:13+02:00", "2026-07-09T08:59:48+02:00", {
+          zusatzauftragId: "hecke",
+        }),
+        eintrag("2026-07-09T09:00:31+02:00", "2026-07-09T09:44:02+02:00", {
+          taetigkeitId: "rasen",
+          zusatzauftragId: "hecke",
+        }),
+        // Die reguläre Zeit im Objekt bleibt beim Satz des Objekts.
+        eintrag("2026-07-10T07:01:12+02:00", "2026-07-10T08:00:40+02:00"),
+      ],
+    }),
+  );
+  expect(ergebnis.positionen).toEqual([
+    {
+      art: "stunden",
+      objektId: "villa",
+      taetigkeitId: "reinigung",
+      minuten: 60,
+      stundensatzCent: 2400,
+      betragCent: 2400,
+    },
+    {
+      art: "zusatzauftrag-stunden",
+      zusatzauftragId: "sturmschaden",
+      objektId: "villa",
+      taetigkeitId: "reinigung",
+      minuten: 30,
+      stundensatzCent: 5500,
+      betragCent: 2750,
+    },
+    {
+      art: "zusatzauftrag-stunden",
+      zusatzauftragId: "sturmschaden",
+      objektId: "villa",
+      taetigkeitId: "rasen",
+      minuten: 90,
+      stundensatzCent: 5500,
+      betragCent: 8250,
+    },
+    {
+      art: "zusatzauftrag-stunden",
+      zusatzauftragId: "hecke",
+      objektId: "villa",
+      taetigkeitId: "reinigung",
+      minuten: 60,
+      stundensatzCent: 2400,
+      betragCent: 2400,
+    },
+    {
+      art: "zusatzauftrag-stunden",
+      zusatzauftragId: "hecke",
+      objektId: "villa",
+      taetigkeitId: "rasen",
+      minuten: 45,
+      stundensatzCent: 4500,
+      betragCent: 3375,
+    },
+  ]);
+  expect(ergebnis.summeCent).toBe(19175);
+});
+
+test("Einzeln abgerechnet gilt der eigene Stundensatz des Zusatzauftrags für alle Tätigkeiten", () => {
+  const ergebnis = rechnungsvorbereitungFuerZusatzauftrag({
+    ...einzeln({ stundensatzCent: 3725 }, [
+      eintrag("2026-03-10T11:00:09+01:00", "2026-03-10T12:00:02+01:00", {
+        objektId: "buero-haus",
+        zusatzauftragId: "sturmschaden",
+      }),
+      eintrag("2026-04-02T07:59:41+02:00", "2026-04-02T08:44:58+02:00", {
+        objektId: "buero-haus",
+        taetigkeitId: "rasen",
+        zusatzauftragId: "sturmschaden",
+      }),
+    ]),
+    objektStundensaetze: [
+      { objektId: "buero-haus", taetigkeitId: "reinigung", stundensatzCent: 3350 },
+    ],
+  });
+  expect(ergebnis.positionen).toMatchObject([
+    { taetigkeitId: "reinigung", minuten: 60, stundensatzCent: 3725, betragCent: 3725 },
+    { taetigkeitId: "rasen", minuten: 45, stundensatzCent: 3725, betragCent: 2794 },
+  ]);
+  expect(ergebnis.summeCent).toBe(6519);
 });

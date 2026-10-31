@@ -1,20 +1,26 @@
 // Welcher Stundensatz einer Tätigkeit gilt: der speziellste Satz, also
-// Objekt vor Kunde vor Standard. Der Rechenbaustein rechnet und die
-// Seiten zeigen „Gilt“ nach dieser einen Regel.
+// Zusatzauftrag vor Objekt vor Kunde vor Standard. Der Rechenbaustein
+// rechnet und die Seiten zeigen „Gilt“ nach dieser einen Regel.
 
-export type Herkunft = "standard" | "kunde" | "objekt";
+export type Herkunft = "standard" | "kunde" | "objekt" | "zusatzauftrag";
 
 // Die Sätze einer Tätigkeit in Cent; null heißt: kein eigener Satz.
 export type Stundensaetze = {
   standardCent: number;
   kundeCent: number | null;
   objektCent: number | null;
+  // Nur bei Arbeit für einen Zusatzauftrag nach Stunden; sein Satz gilt
+  // für alle seine Tätigkeiten.
+  zusatzauftragCent?: number | null;
 };
 
 export function geltenderStundensatz(saetze: Stundensaetze): {
   stundensatzCent: number;
   herkunft: Herkunft;
 } {
+  if (saetze.zusatzauftragCent != null) {
+    return { stundensatzCent: saetze.zusatzauftragCent, herkunft: "zusatzauftrag" };
+  }
   if (saetze.objektCent !== null) {
     return { stundensatzCent: saetze.objektCent, herkunft: "objekt" };
   }

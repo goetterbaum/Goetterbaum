@@ -20,6 +20,7 @@ test("Ein Zusatzauftrag mit Festbetrag wird centgenau übernommen", () => {
       beschreibung: "Grundreinigung Treppenhaus nach Umbau",
       abrechnungsart: "festbetrag",
       festbetrag_cent: 189050,
+      stundensatz_cent: null,
     },
   });
 });
@@ -31,7 +32,12 @@ test("Ein Zusatzauftrag nach Stunden hat keinen Festbetrag", () => {
     ),
   ).toEqual({
     ok: true,
-    daten: { beschreibung: "Sturmschaden Hof", abrechnungsart: "stunden", festbetrag_cent: null },
+    daten: {
+      beschreibung: "Sturmschaden Hof",
+      abrechnungsart: "stunden",
+      festbetrag_cent: null,
+      stundensatz_cent: null,
+    },
   });
   expect(
     pruefeZusatzauftragEingabe(
@@ -71,4 +77,40 @@ test("Ohne Beschreibung oder mit unbekannter Abrechnungsart gibt es keinen Zusat
       abrechnungsart,
     ).toEqual({ ok: false, fehler: "Bitte wähle eine Abrechnungsart." });
   }
+});
+
+const STURMSCHADEN = { beschreibung: "Sturmschaden Hof", abrechnungsart: "stunden" };
+
+test("Ein Zusatzauftrag nach Stunden kann einen eigenen Stundensatz haben", () => {
+  expect(pruefeZusatzauftragEingabe(formular({ ...STURMSCHADEN, stundensatz: " 52,5 " }))).toEqual({
+    ok: true,
+    daten: {
+      beschreibung: "Sturmschaden Hof",
+      abrechnungsart: "stunden",
+      festbetrag_cent: null,
+      stundensatz_cent: 5250,
+    },
+  });
+  // Leer gelassen gelten die Sätze des Objekts bzw. Kunden.
+  expect(pruefeZusatzauftragEingabe(formular({ ...STURMSCHADEN, stundensatz: " " }))).toMatchObject(
+    { ok: true, daten: { stundensatz_cent: null } },
+  );
+});
+
+test("Der Stundensatz des Zusatzauftrags ist nur ein Betrag über 0 €", () => {
+  for (const stundensatz of ["0", "0,00", "zweiundfünfzig", "52.50", "-12,00", "21.474.837,00"]) {
+    expect(
+      pruefeZusatzauftragEingabe(formular({ ...STURMSCHADEN, stundensatz })),
+      stundensatz,
+    ).toEqual({ ok: false, fehler: "Der Stundensatz ist kein gültiger Betrag. Beispiel: 32,50" });
+  }
+});
+
+test("Bei Festbetrag gibt es keinen Stundensatz", () => {
+  expect(pruefeZusatzauftragEingabe(formular({ ...GRUNDREINIGUNG, stundensatz: "52,50" }))).toEqual(
+    {
+      ok: false,
+      fehler: "Bei Festbetrag gibt es keinen Stundensatz. Bitte lass das Feld leer.",
+    },
+  );
 });

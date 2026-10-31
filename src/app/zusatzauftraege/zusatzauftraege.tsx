@@ -10,12 +10,16 @@ import { texte } from "@/texte";
 import { zusatzauftragAnlegen } from "./actions";
 import { ZusatzauftragFormular } from "./zusatzauftrag-formular";
 
-// Die Abrechnung eines Zusatzauftrags in Worten, z. B. „Festbetrag 890,00 €“.
+// Die Abrechnung eines Zusatzauftrags in Worten, z. B. „Festbetrag 890,00 €“
+// oder „Nach Stunden, 52,50 € je Stunde“.
 export function zusatzauftragAbrechnungAlsText(
-  zusatzauftrag: Pick<Zusatzauftrag, "abrechnungsart" | "festbetrag_cent">,
+  zusatzauftrag: Pick<Zusatzauftrag, "abrechnungsart" | "festbetrag_cent" | "stundensatz_cent">,
 ): string {
   if (zusatzauftrag.abrechnungsart === "festbetrag" && zusatzauftrag.festbetrag_cent) {
     return texte.zusatzauftraege.festbetragText(euroAlsText(zusatzauftrag.festbetrag_cent));
+  }
+  if (zusatzauftrag.abrechnungsart === "stunden" && zusatzauftrag.stundensatz_cent) {
+    return texte.zusatzauftraege.stundenMitSatzText(euroAlsText(zusatzauftrag.stundensatz_cent));
   }
   return texte.zusatzauftragAbrechnungsarten[zusatzauftrag.abrechnungsart];
 }

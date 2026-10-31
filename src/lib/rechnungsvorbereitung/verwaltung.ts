@@ -49,6 +49,7 @@ type ZusatzauftragZeile = {
   beschreibung: string;
   abrechnungsart: ZusatzauftragAbrechnungsart;
   festbetrag_cent: number | null;
+  stundensatz_cent: number | null;
   erledigt: boolean;
 };
 
@@ -146,6 +147,7 @@ export async function ladeRechnungsvorbereitung(
       objektId: za.objekt_id,
       abrechnungsart: za.abrechnungsart,
       festbetragCent: za.festbetrag_cent,
+      stundensatzCent: za.stundensatz_cent,
       erledigt: za.erledigt,
     })),
     zeiteintraege: zeiteintraege.map(zeiteintragFuerRechenbaustein),
@@ -234,7 +236,7 @@ export async function ladeRechnungsvorbereitungFuerZusatzauftrag(
   const { data: za, error } = await supabase
     .from("zusatzauftrag")
     .select(
-      "id, objekt_id, beschreibung, abrechnungsart, festbetrag_cent, erledigt, abgerechnet_in, objekt(bezeichnung, kunde_id)",
+      "id, objekt_id, beschreibung, abrechnungsart, festbetrag_cent, stundensatz_cent, erledigt, abgerechnet_in, objekt(bezeichnung, kunde_id)",
     )
     .eq("id", zusatzauftragId)
     .maybeSingle<EinzelnerZusatzauftragZeile>();
@@ -279,6 +281,7 @@ export async function ladeRechnungsvorbereitungFuerZusatzauftrag(
       objektId: za.objekt_id,
       abrechnungsart: za.abrechnungsart,
       festbetragCent: za.festbetrag_cent,
+      stundensatzCent: za.stundensatz_cent,
       // Ein abgerechneter Festbetrag ist nicht noch einmal abrechenbar.
       erledigt: za.erledigt && za.abgerechnet_in === null,
     },
@@ -319,7 +322,9 @@ async function ladeNichtAbgerechneteZusatzauftraege(
   if (objektIds.length === 0) return [];
   const { data, error } = await supabase
     .from("zusatzauftrag")
-    .select("id, objekt_id, beschreibung, abrechnungsart, festbetrag_cent, erledigt")
+    .select(
+      "id, objekt_id, beschreibung, abrechnungsart, festbetrag_cent, stundensatz_cent, erledigt",
+    )
     .in("objekt_id", objektIds)
     .is("abgerechnet_in", null)
     .order("angelegt_am")

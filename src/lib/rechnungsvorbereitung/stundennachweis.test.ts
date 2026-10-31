@@ -54,6 +54,7 @@ function ergebnis() {
         objektId: "o-ring",
         abrechnungsart: "stunden",
         festbetragCent: null,
+        stundensatzCent: null,
         erledigt: false,
       },
     ],

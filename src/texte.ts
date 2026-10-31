@@ -14,6 +14,7 @@ const HERKUNFT: Record<Herkunft, string> = {
   standard: "Standard",
   kunde: "Kunde",
   objekt: "Objekt",
+  zusatzauftrag: "Zusatzauftrag",
 };
 
 export const texte = {
@@ -275,6 +276,9 @@ export const texte = {
     // Nicht nur „Abrechnungsart“: Auf der Objektseite steht auch die des Objekts.
     abrechnungsart: "Abrechnung des Zusatzauftrags",
     festbetrag: "Festbetrag in Euro",
+    stundensatz: "Stundensatz in Euro",
+    stundensatzHinweis: "Leer lassen: Es gelten die Sätze des Objekts bzw. Kunden.",
+    stundenMitSatzText: (betrag: string) => `Nach Stunden, ${betrag} je Stunde`,
     angelegt: "Zusatzauftrag angelegt.",
     alsErledigtMarkieren: "Als erledigt markieren",
     einzelnAbrechnen: "Einzeln abrechnen",
@@ -293,6 +297,10 @@ export const texte = {
       "Für diesen Zusatzauftrag ist schon Zeit abgerechnet. Die Abrechnungsart lässt sich deshalb nicht mehr ändern.",
     fehlerFestbetragBeiStunden:
       "Bei Abrechnung nach Stunden gibt es keinen Festbetrag. Bitte lass das Feld leer.",
+    fehlerStundensatzBeiFestbetrag:
+      "Bei Festbetrag gibt es keinen Stundensatz. Bitte lass das Feld leer.",
+    fehlerStundensatzFest:
+      "Für diesen Zusatzauftrag ist schon Zeit abgerechnet. Der Stundensatz lässt sich deshalb nicht mehr ändern.",
   },
   erfassung: {
     laeuftSeit: (seit: string) => `Läuft seit ${seit}`,
