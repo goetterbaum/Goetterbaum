@@ -84,6 +84,8 @@ async function auswahl(firmaId: string) {
 // erfasster. Die Seite zeigt schon dessen Erfassung.
 async function ganzerArbeitstag(page: Page, erfasster: TestZugang, firmaId: string) {
   const { erstes, zweites, taetigkeit } = await auswahl(firmaId);
+  // Die Objekte gibt es erst seit eben; die Seite war schon geladen.
+  await page.reload();
 
   await waehleAus(page, erstes.bezeichnung, taetigkeit.name);
   await knopf(page, "Start").click();
