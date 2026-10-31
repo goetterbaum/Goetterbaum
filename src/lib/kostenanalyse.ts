@@ -84,7 +84,7 @@ export type Bewertung = {
 export type BewerteterEintrag = {
   zeiteintragId: string;
   mitarbeiterId: string;
-  // Der Kalendertag seines Beginns in Berlin.
+  // Der Kalendertag in Berlin, an dem sein Arbeitstag beginnt.
   datum: string;
   beginn: string;
   ende: string;
@@ -138,7 +138,7 @@ export function kostenanalyse(eingabe: Eingabe): Kostenanalyse {
   const letzterMonat = new Map<string, Monat>();
   for (const z of eingabe.zeiteintraege) {
     if (z.zusatzauftragId === null) continue;
-    const monat = monatVon(z.beginn);
+    const monat = berlinerMonat(z.beginn);
     if (monat > (letzterMonat.get(z.zusatzauftragId) ?? "")) {
       letzterMonat.set(z.zusatzauftragId, monat);
     }
@@ -146,14 +146,17 @@ export function kostenanalyse(eingabe: Eingabe): Kostenanalyse {
   const imZeitraum = (z: ZeiteintragFuerKosten) => {
     const za = z.zusatzauftragId === null ? undefined : zusatzauftragVon.get(z.zusatzauftragId);
     const monat =
-      za?.abrechnungsart === "festbetrag" ? letzterMonat.get(za.id) : monatVon(z.beginn);
+      za?.abrechnungsart === "festbetrag" ? letzterMonat.get(za.id) : berlinerMonat(z.beginn);
     return monat !== undefined && monate.has(monat);
   };
 
-  const satz = (mitarbeiterId: string, beginn: string) =>
+  // Ein Arbeitstag zählt mit Kosten und Fahrten zum Kalendertag seines
+  // Beginns, auch über Mitternacht.
+  const tagDesArbeitstags = new Map<string, string>();
+  const satz = (z: ZeiteintragFuerKosten) =>
     geltendeArbeitgeberkosten(
-      berlinerDatum(Date.parse(beginn)),
-      eingabe.arbeitgeberkosten.jeMitarbeiter[mitarbeiterId] ?? [],
+      tagDesArbeitstags.get(z.id)!,
+      eingabe.arbeitgeberkosten.jeMitarbeiter[z.mitarbeiterId] ?? [],
       eingabe.arbeitgeberkosten.standard,
     );
 
@@ -161,9 +164,12 @@ export function kostenanalyse(eingabe: Eingabe): Kostenanalyse {
   const fahrtenJeEintrag = new Map<string, FahrtAnteil[]>();
   const fahrtenOhneObjekt: ZeiteintragFuerKosten[] = [];
   for (const tag of arbeitstage(eingabe.zeiteintraege)) {
+    // Eine Fahrt vor dem ersten Objekt gehört nicht zum Arbeitstag.
+    const erster = tag.find((z) => z.art === "taetigkeit") ?? tag[0];
+    for (const z of tag) tagDesArbeitstags.set(z.id, berlinerDatum(Date.parse(erster.beginn)));
     const verteilt = fahrtenVerteilen(tag);
     if (verteilt === null) {
-      fahrtenOhneObjekt.push(...tag.filter((z) => monate.has(monatVon(z.beginn))));
+      fahrtenOhneObjekt.push(...tag.filter((z) => monate.has(berlinerMonat(z.beginn))));
       continue;
     }
     for (const [id, anteile] of verteilt) fahrtenJeEintrag.set(id, anteile);
@@ -194,20 +200,23 @@ export function kostenanalyse(eingabe: Eingabe): Kostenanalyse {
     .filter(imZeitraum)
     .sort((a, b) => Date.parse(a.beginn) - Date.parse(b.beginn));
   for (const z of eintraegeInObjekten) {
-    const gilt = satz(z.mitarbeiterId, z.beginn);
+    const gilt = satz(z);
     const arbeitsMs = Date.parse(z.ende) - Date.parse(z.beginn);
     const fahrten = fahrtenJeEintrag.get(z.id) ?? [];
-    const arbeitskostenCent = gilt === null ? null : kostenCent(arbeitsMs, gilt.centJeStunde);
-    const fahrkostenCent = summeOderNull(
+    const fahrkosten = summeOderNull(
       fahrten.map((f) => {
-        const fuerFahrt = satz(f.fahrt.mitarbeiterId, f.fahrt.beginn);
+        const fuerFahrt = satz(f.fahrt);
         return fuerFahrt === null ? null : kostenCent(f.ms, fuerFahrt.centJeStunde);
       }),
     );
+    // Fehlt ein Wert, bleiben beide Kosten leer, statt halb zu zählen.
+    const fehlt = gilt === null || fahrkosten === null;
+    const arbeitskostenCent = fehlt ? null : kostenCent(arbeitsMs, gilt.centJeStunde);
+    const fahrkostenCent = fehlt ? null : fahrkosten;
     zeileFuer(z.objektId, z.zusatzauftragId).eintraege.push({
       zeiteintragId: z.id,
       mitarbeiterId: z.mitarbeiterId,
-      datum: berlinerDatum(Date.parse(z.beginn)),
+      datum: tagDesArbeitstags.get(z.id)!,
       beginn: z.beginn,
       ende: z.ende,
       arbeitsMinuten: arbeitsMs / 60_000,
@@ -337,7 +346,8 @@ function fahrtenVerteilen(tag: ZeiteintragFuerKosten[]): Map<string, FahrtAnteil
 // ihre Verteilung auf die Zeiteinträge. Je Kunde und Monat rechnet der
 // Rechenbaustein der Rechnungsvorbereitung mit heutigen Preisen, als wäre
 // noch nichts abgerechnet und alles freigegeben. Pauschalen gibt es je
-// Monat; ein archiviertes Pauschal-Objekt bekommt wie dort keine mehr.
+// Monat; ein archiviertes Pauschal-Objekt nur in Monaten mit Einsatz,
+// denn nur dann erscheint es.
 function einnahmenVerteilen(
   eingabe: Eingabe,
   letzterMonat: Map<string, Monat>,
@@ -355,9 +365,7 @@ function einnahmenVerteilen(
   const ganz = (z: Zeiteintrag) => ({ id: z.id, ms: Date.parse(z.ende) - Date.parse(z.beginn) });
 
   for (const kunde of eingabe.kunden) {
-    const objekte = eingabe.objekte.filter(
-      (o) => o.kundeId === kunde.id && (!o.archiviert || o.abrechnungsart === "stunden"),
-    );
+    const objekte = eingabe.objekte.filter((o) => o.kundeId === kunde.id);
     const objektIds = new Set(objekte.map((o) => o.id));
     const zusatzauftraege = eingabe.zusatzauftraege.filter((za) => objektIds.has(za.objektId));
     const taetigkeiten = eingabe.taetigkeiten.map((t) => ({
@@ -377,7 +385,7 @@ function einnahmenVerteilen(
           objektIds.has(z.objektId!) &&
           (z.zusatzauftragId !== null && festbetragIds.has(z.zusatzauftragId)
             ? true
-            : monatVon(z.beginn) === monat),
+            : berlinerMonat(z.beginn) === monat),
       );
       const ergebnis = rechnungsvorbereitung({
         kunde: { rundungsregel: kunde.rundungsregel, abrechnungszeitraum: "monatlich" },
@@ -396,10 +404,12 @@ function einnahmenVerteilen(
 
       for (const p of ergebnis.positionen) {
         const zusatzauftragId = "zusatzauftragId" in p ? p.zusatzauftragId : null;
-        addiere(jeZeile, zeilenSchluessel(p.objektId, zusatzauftragId), p.betragCent);
         const passend = zeiteintraege.filter(
           (z) => z.objektId === p.objektId && z.zusatzauftragId === zusatzauftragId,
         );
+        const archiviert = objekte.find((o) => o.id === p.objektId)?.archiviert;
+        if (p.art === "pauschale" && archiviert && passend.length === 0) continue;
+        addiere(jeZeile, zeilenSchluessel(p.objektId, zusatzauftragId), p.betragCent);
         if (p.art === "pauschale" || p.art === "zusatzauftrag-festbetrag") {
           verteileAufEintraege(p.betragCent, passend.map(ganz));
           continue;
@@ -475,10 +485,10 @@ function zeilenBewertung(
 
 function bewertungOhneObjekt(
   fahrten: ZeiteintragFuerKosten[],
-  satz: (mitarbeiterId: string, beginn: string) => { centJeStunde: number } | null,
+  satz: (z: ZeiteintragFuerKosten) => { centJeStunde: number } | null,
 ): Bewertung {
   const kosten = fahrten.map((f) => {
-    const gilt = satz(f.mitarbeiterId, f.beginn);
+    const gilt = satz(f);
     const ms = Date.parse(f.ende) - Date.parse(f.beginn);
     return gilt === null ? null : kostenCent(ms, gilt.centJeStunde);
   });
@@ -514,6 +524,9 @@ function mitDeckungsbeitrag(
   const deckungsbeitragCent = kosten === null ? null : b.einnahmenCent - kosten;
   return {
     ...b,
+    // Fehlt ein Teil der Kosten, bleiben alle leer, nie 0 €.
+    arbeitskostenCent: kosten === null ? null : b.arbeitskostenCent,
+    fahrkostenCent: kosten === null ? null : b.fahrkostenCent,
     kostenCent: kosten,
     deckungsbeitragCent,
     deckungsbeitragAnteil:
@@ -548,7 +561,7 @@ function zeilenSchluessel(objektId: string, zusatzauftragId: string | null): str
   return `${objektId}|${zusatzauftragId ?? ""}`;
 }
 
-function monatVon(zeitpunkt: string): Monat {
+function berlinerMonat(zeitpunkt: string): Monat {
   return berlinerDatum(Date.parse(zeitpunkt)).slice(0, 7);
 }
 

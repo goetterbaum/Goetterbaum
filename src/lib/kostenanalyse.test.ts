@@ -241,7 +241,7 @@ test("Die Rückfahrt wird gleichmäßig auf alle Objekte des Arbeitstags verteil
   expect(zeile(ergebnis, "buero-haus")).toMatchObject({ fahrtMinuten: 60, fahrkostenCent: 2600 });
 });
 
-test("Eine nachgetragene Anfahrt gehört ganz zum ersten Objekt", () => {
+test("Eine nachgetragene Fahrt vor dem ersten Objekt gehört ganz zu diesem", () => {
   const ergebnis = kostenanalyse(
     eingabe({
       zeiteintraege: [
@@ -259,7 +259,7 @@ test("Eine nachgetragene Anfahrt gehört ganz zum ersten Objekt", () => {
   expect(zeile(ergebnis, "buero-haus").fahrtMinuten).toBe(10);
 });
 
-test("Bei geteiltem Dienst wird zwischen den beiden Arbeitstagen nichts verteilt", () => {
+test("Zwischen zwei Arbeitstagen am selben Tag wird nichts verteilt", () => {
   const ergebnis = kostenanalyse(
     eingabe({
       zeiteintraege: [
@@ -408,7 +408,9 @@ test("Der eigene Wert gilt ab seinem „gültig ab“, Mitternacht in Berlin; da
         jeMitarbeiter: { anna: [{ gueltigAb: "2026-07-07", centJeStunde: 3100 }] },
       },
       zeiteintraege: [
-        eintrag("2026-07-06T22:00:00+02:00", "2026-07-06T23:00:00+02:00"),
+        eintrag("2026-07-06T22:00:00+02:00", "2026-07-06T23:00:00+02:00", {
+          arbeitstagEndetHier: true,
+        }),
         eintrag("2026-07-07T00:30:00+02:00", "2026-07-07T01:30:00+02:00"),
       ],
     }),
@@ -610,4 +612,68 @@ test("Die Details zeigen je Tag die Einträge mit Tagessumme und die Einnahmen o
     ],
   );
   expect(buero.einnahmenOhneZeiteintragCent).toBe(45000);
+});
+
+test("Ein Arbeitstag über Mitternacht zählt mit seinen Kosten zum Tag seines Beginns", () => {
+  const ergebnis = kostenanalyse(
+    eingabe({
+      arbeitgeberkosten: {
+        standard: [{ gueltigAb: "2026-01-01", centJeStunde: 2600 }],
+        jeMitarbeiter: { anna: [{ gueltigAb: "2026-07-07", centJeStunde: 3100 }] },
+      },
+      zeiteintraege: [
+        eintrag("2026-07-06T22:00:00+02:00", "2026-07-06T23:00:00+02:00"),
+        eintrag("2026-07-07T00:30:00+02:00", "2026-07-07T01:30:00+02:00"),
+      ],
+    }),
+  );
+  expect(
+    zeile(ergebnis, "villa").eintraege.map((e) => [e.datum, e.arbeitskostenCent, e.herkunft]),
+  ).toEqual([
+    ["2026-07-06", 2600, "standard"],
+    ["2026-07-06", 2600, "standard"],
+  ]);
+});
+
+test("Fehlen die Kosten ohne Fahrt, bleiben auch die Fahrkosten leer statt 0 €", () => {
+  const ergebnis = kostenanalyse(
+    eingabe({
+      arbeitgeberkosten: { standard: [], jeMitarbeiter: {} },
+      zeiteintraege: [eintrag("2026-07-06T08:00:00+02:00", "2026-07-06T10:00:00+02:00")],
+    }),
+  );
+  expect(zeile(ergebnis, "villa")).toMatchObject({
+    arbeitskostenCent: null,
+    fahrkostenCent: null,
+    kostenCent: null,
+    deckungsbeitragCent: null,
+  });
+  expect(zeile(ergebnis, "villa").eintraege[0]).toMatchObject({
+    arbeitskostenCent: null,
+    fahrkostenCent: null,
+  });
+});
+
+test("Ein archiviertes Pauschal-Objekt erscheint nur mit Einsatz und bekommt die Pauschale nur für diese Monate", () => {
+  const archiviert = {
+    id: "altbau",
+    kundeId: "hausverwaltung",
+    abrechnungsart: "pauschale" as const,
+    pauschaleCent: 30000,
+    archiviert: true,
+  };
+  const ergebnis = kostenanalyse(
+    eingabe({
+      monate: ["2026-06", "2026-07"],
+      objekte: [archiviert],
+      zeiteintraege: [
+        eintrag("2026-06-10T08:00:00+02:00", "2026-06-10T09:00:00+02:00", { objektId: "altbau" }),
+      ],
+    }),
+  );
+  expect(zeile(ergebnis, "altbau")).toMatchObject({
+    einnahmenCent: 30000,
+    arbeitskostenCent: 2600,
+  });
+  expect(kostenanalyse(eingabe({ objekte: [archiviert] })).kunden).toEqual([]);
 });

@@ -3,7 +3,7 @@
 // zeigen genau diese Zeilen; alle Zahlen kommen unverändert aus dem
 // Baustein.
 import { csvInhalt, csvText as text } from "@/lib/csv";
-import { euroAlsEingabe } from "@/lib/geld";
+import { euroAlsEingabe, euroAlsText } from "@/lib/geld";
 import type { Bewertung, Kostenanalyse } from "@/lib/kostenanalyse";
 import { stundenAlsText } from "@/lib/rechnungsvorbereitung/zeilen";
 import { texte } from "@/texte";
@@ -132,6 +132,16 @@ export function kostenCsv(zeilen: UebersichtsZeile[]): string {
       text(hinweis),
     ]),
   ]);
+}
+
+// Ein Betrag für die Seite; fehlende Kosten bleiben leer.
+export function euroOderLeer(cent: number | null): string {
+  return cent === null ? "" : euroAlsText(cent);
+}
+
+// Minuten für die Seite, z. B. „1:30 Std.“, auf ganze Minuten gerundet.
+export function stundenFuerSeite(minuten: number): string {
+  return texte.kostenanalyse.stunden(stundenAlsText(Math.round(minuten)));
 }
 
 // Der Name zu einer Kennung, „unbekannt“ statt einer leeren Zelle.

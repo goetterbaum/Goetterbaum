@@ -69,9 +69,9 @@ test("Die CSV-Datei hat die Spalten der Seite, Zusatzaufträge eingerückt, fehl
   expect(csv.split("\r\n")).toEqual([
     "﻿Kunde;Objekt;Einnahmen;Arbeitsstunden;Arbeitskosten;Fahrzeit;Fahrkosten;Deckungsbeitrag (€);Deckungsbeitrag (%);Hinweis",
     '"Hausverwaltung; Nord";Villa;60,00;2:00;52,00;0:00;0,00;8,00;13,3;',
-    '"Hausverwaltung; Nord";↳ Sturmschaden;45,00;1:30;;0:00;0,00;;–;vorläufig · Kosten fehlen für: Ben',
-    '"Hausverwaltung; Nord";"Summe Hausverwaltung; Nord";105,00;3:30;;0:00;0,00;;–;vorläufig · Kosten fehlen für: Ben',
-    ";Gesamtsumme;105,00;3:30;;0:00;0,00;;–;vorläufig · Kosten fehlen für: Ben",
+    '"Hausverwaltung; Nord";↳ Sturmschaden;45,00;1:30;;0:00;;;–;vorläufig · Kosten fehlen für: Ben',
+    '"Hausverwaltung; Nord";"Summe Hausverwaltung; Nord";105,00;3:30;;0:00;;;–;vorläufig · Kosten fehlen für: Ben',
+    ";Gesamtsumme;105,00;3:30;;0:00;;;–;vorläufig · Kosten fehlen für: Ben",
     "",
   ]);
 });

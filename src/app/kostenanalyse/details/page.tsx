@@ -5,8 +5,12 @@ import { berlinerUhrzeit, datumAlsText } from "@/lib/berliner-zeit";
 import { euroAlsText } from "@/lib/geld";
 import type { Bewertung, BewerteterEintrag, Kostenanalyse, Zeile } from "@/lib/kostenanalyse";
 import { ladeKostenanalyse, type Namen } from "@/lib/kostenanalyse/verwaltung";
-import { hinweis, name } from "@/lib/kostenanalyse/zeilen";
-import { stundenAlsText } from "@/lib/rechnungsvorbereitung/zeilen";
+import {
+  euroOderLeer as euro,
+  hinweis,
+  name,
+  stundenFuerSeite as stunden,
+} from "@/lib/kostenanalyse/zeilen";
 import { createClient } from "@/lib/supabase/server";
 import { texte } from "@/texte";
 import styles from "../../page.module.css";
@@ -121,14 +125,6 @@ function gesuchteZeile(
   return ergebnis.kunden
     .flatMap((k) => k.objekte.flatMap((o) => [o.zeile, ...o.zusatzauftraege]))
     .find((z) => z.objektId === objektId && (z.zusatzauftragId ?? "") === zusatzauftragId);
-}
-
-function euro(cent: number | null) {
-  return cent === null ? "" : euroAlsText(cent);
-}
-
-function stunden(minuten: number) {
-  return texte.kostenanalyse.stunden(stundenAlsText(Math.round(minuten)));
 }
 
 function EintragsZeile({ eintrag: e, namen }: { eintrag: BewerteterEintrag; namen: Namen }) {

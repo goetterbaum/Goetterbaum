@@ -6,12 +6,13 @@ import { heuteInBerlin } from "@/lib/berliner-zeit";
 import { euroAlsText } from "@/lib/geld";
 import { ladeKostenanalyse } from "@/lib/kostenanalyse/verwaltung";
 import {
+  euroOderLeer as euro,
   prozentAlsText,
+  stundenFuerSeite as stunden,
   uebersichtsZeilen,
   type UebersichtsZeile,
 } from "@/lib/kostenanalyse/zeilen";
 import { monatVon } from "@/lib/rechnungsvorbereitung/zeitraum";
-import { stundenAlsText } from "@/lib/rechnungsvorbereitung/zeilen";
 import { createClient } from "@/lib/supabase/server";
 import { texte } from "@/texte";
 import styles from "../page.module.css";
@@ -102,10 +103,7 @@ async function Inhalt({
 }
 
 function Zeile({ zeile, auswahl }: { zeile: UebersichtsZeile; auswahl: URLSearchParams }) {
-  const t = texte.kostenanalyse;
   const b = zeile.bewertung;
-  const euro = (cent: number | null) => (cent === null ? "" : euroAlsText(cent));
-  const stunden = (minuten: number) => t.stunden(stundenAlsText(minuten));
   const istSumme = zeile.objektId === null;
   const details = new URLSearchParams(auswahl);
   if (zeile.objektId) details.set("objekt", zeile.objektId);
