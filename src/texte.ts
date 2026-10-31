@@ -305,8 +305,16 @@ export const texte = {
   erfassung: {
     laeuftSeit: (seit: string) => `Läuft seit ${seit}`,
     fahrt: "Fahrt",
-    stopp: "Stopp",
-    stoppLaeuft: "Wird gestoppt …",
+    fertigHier: "Fertig hier",
+    fertigHierLaeuft: "Wird gespeichert …",
+    arbeitstagBeenden: "Arbeitstag beenden",
+    arbeitstagBeendenRueckfrage: "Arbeitstag wirklich beenden?",
+    rueckfahrtWirdGespeichert: "Die Fahrt wird als Rückfahrt gespeichert.",
+    miniFahrtWirdNichtGespeichert: (minuten: number) =>
+      `Die Fahrt dauert noch keine ${minuten} Minuten und wird deshalb nicht gespeichert.`,
+    arbeitstagBeendenBestaetigen: "Ja, beenden",
+    arbeitstagBeendenAbbrechen: "Abbrechen",
+    arbeitstagBeendenLaeuft: "Wird beendet …",
     start: "Start",
     startLaeuft: "Wird gestartet …",
     fahrtStarten: "Fahrt starten",
@@ -329,23 +337,30 @@ export const texte = {
     bisherigerZusatzauftrag: "Bisheriger Zusatzauftrag (schon erledigt)",
     zusatzauftragText: (beschreibung: string) => `Zusatzauftrag: ${beschreibung}`,
     fehlerZusatzauftrag: "Bitte wähle einen Zusatzauftrag aus der Liste.",
-    fehlerLaeuftSchon: "Es läuft schon ein Zeiteintrag. Stoppe ihn, bevor du einen neuen startest.",
+    fehlerLaeuftSchon:
+      "Es läuft schon ein Zeiteintrag. Beende ihn mit „Fertig hier“ oder „Arbeitstag beenden“, bevor du einen neuen startest.",
     fehlerLaeuftNichtsOderUnvollstaendig:
       "Es läuft kein Zeiteintrag mehr, oder er läuft schon so lange, dass du das richtige Ende nachtragen musst.",
+    fehlerLaeuftKeinObjekt:
+      "Es läuft kein Objekt mehr, oder es läuft schon so lange, dass du das richtige Ende nachtragen musst.",
     fehlerNichtZurAuswahl:
       "Dieses Objekt, diese Tätigkeit oder dieser Zusatzauftrag steht nicht mehr zur Auswahl. Bitte lade die Seite neu.",
     fehlerAbgemeldet: "Du bist nicht mehr angemeldet. Bitte melde dich neu an.",
     fehlerStart:
       "Der Start wurde nicht gespeichert. Bitte versuche es noch einmal oder trage die Zeit später als Nachtrag ein.",
-    fehlerStopp:
-      "Der Stopp wurde nicht gespeichert. Bitte versuche es noch einmal oder trage die Zeit später als Nachtrag ein.",
+    fehlerFertigHier:
+      "„Fertig hier“ wurde nicht gespeichert. Bitte versuche es noch einmal oder trage die Zeit später als Nachtrag ein.",
+    fehlerArbeitstagBeenden:
+      "Das Beenden wurde nicht gespeichert. Bitte versuche es noch einmal oder trage das Ende später als Nachtrag ein.",
     ohneNetzStart:
       "Kein Internet: Der Start wurde nicht gespeichert. Bitte trage diese Zeit später als Nachtrag ein.",
     unvollstaendig: "Unvollständig",
     unvollstaendigHinweis: (stunden: number) =>
-      `Dieser Zeiteintrag läuft seit mehr als ${stunden} Stunden. Wurde der Stopp vergessen? Bitte trage das richtige Ende ein.`,
-    ohneNetzStopp:
-      "Kein Internet: Der Stopp wurde nicht gespeichert. Bitte trage das Ende später als Nachtrag ein.",
+      `Dieser Zeiteintrag läuft seit mehr als ${stunden} Stunden. Wurde das Beenden vergessen? Bitte trage das richtige Ende ein.`,
+    ohneNetzFertigHier:
+      "Kein Internet: „Fertig hier“ wurde nicht gespeichert. Bitte trage das Ende später als Nachtrag ein.",
+    ohneNetzArbeitstagBeenden:
+      "Kein Internet: Das Beenden wurde nicht gespeichert. Bitte trage das Ende später als Nachtrag ein.",
   },
   nachtrag: {
     titel: "Zeit nachtragen",
@@ -363,7 +378,7 @@ export const texte = {
     gespeichert: "Gespeichert.",
     zurueck: "Zurück zur Erfassung",
     nichtGefunden: "Diesen Zeiteintrag gibt es nicht oder er gehört dir nicht.",
-    laeuftNoch: "Dieser Zeiteintrag läuft noch. Stoppe ihn, bevor du ihn änderst.",
+    laeuftNoch: "Dieser Zeiteintrag läuft noch. Beende ihn, bevor du ihn änderst.",
     fehlerUeberschneidung:
       "Diese Zeit überschneidet sich mit einem anderen Zeiteintrag von dir. Bitte prüfe Beginn und Ende.",
     fehlerNichtGespeichert: "Der Nachtrag wurde nicht gespeichert. Bitte versuche es noch einmal.",
@@ -381,7 +396,7 @@ export const texte = {
     mitJetztBeendet: (stunden: number) =>
       `Der Zeiteintrag wurde mit der aktuellen Uhrzeit beendet, weil er noch keine ${stunden} Stunden lief. Bitte korrigiere das Ende über „Ändern“.`,
     nichtUnvollstaendig: (stunden: number) =>
-      `Dieser Zeiteintrag läuft noch keine ${stunden} Stunden. Stoppe ihn, wenn die Arbeit zu Ende ist.`,
+      `Dieser Zeiteintrag läuft noch keine ${stunden} Stunden. Beende ihn mit „Fertig hier“ oder „Arbeitstag beenden“, wenn die Arbeit zu Ende ist.`,
     fehlerUhrzeitEnde: "Bitte gib das Ende als Uhrzeit ein, z. B. 16:30.",
     fehlerEndeNachBeginn: "Das Ende muss nach dem Beginn liegen.",
   },
@@ -498,6 +513,7 @@ export const texte = {
     nachtrag: "Nachtrag",
     freigegeben: "Freigegeben",
     abgerechnet: "Abgerechnet",
+    arbeitstagEndetHier: "Arbeitstag endet hier",
     ja: "ja",
     nein: "nein",
     unbekannt: "unbekannt",

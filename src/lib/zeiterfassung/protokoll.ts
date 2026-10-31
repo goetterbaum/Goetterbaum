@@ -18,6 +18,8 @@ type Stand = {
   freigegeben_am?: string | null;
   // Die Abrechnung, die ihn umfasst; fehlt in Ständen von vor #16.
   abgerechnet_in?: string | null;
+  // Fehlt in Ständen von vor #63.
+  arbeitstag_endet_hier?: boolean;
 };
 
 // Eine Zeile, wie sie die Datenbank-Funktion protokoll_zum_zeiteintrag
@@ -84,6 +86,7 @@ function felder(stand: Stand, namen: Namen): [string, string][] {
     [t.nachtrag, stand.nachtrag ? t.ja : t.nein],
     [t.freigegeben, zeitAlsText(stand.freigegeben_am ?? null)],
     [t.abgerechnet, stand.abgerechnet_in ? t.ja : t.nein],
+    [t.arbeitstagEndetHier, stand.arbeitstag_endet_hier ? t.ja : t.nein],
   ];
 }
 

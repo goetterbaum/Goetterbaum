@@ -41,8 +41,15 @@ Ein ununterbrochener Zeitblock (von–bis) eines Mitarbeiters: entweder eine Tä
 _Avoid_: Buchung, Stempelung, Zeitbuchung
 
 **Fahrt**:
-Ein Zeiteintrag ohne Objekt für den Weg zwischen Arbeitsorten. Zählt zur Arbeitszeit, wird aber nie einem Kunden berechnet.
+Ein Zeiteintrag ohne Objekt für den Weg zwischen Arbeitsorten oder die Rückfahrt nach dem letzten Objekt. Zählt zur Arbeitszeit, wird aber nie einem Kunden berechnet.
 _Avoid_: Fahrtzeit, Anfahrt, Wegezeit
+
+**Arbeitstag**:
+Die Arbeit eines Mitarbeiters vom ersten Zeiteintrag in einem Objekt bis „Arbeitstag beenden“, einschließlich der Fahrten und Pausen dazwischen. Die Anfahrt zum ersten Objekt gehört nicht dazu. Er zählt zum Kalendertag seines Beginns und gilt nach mehr als 12 Stunden ohne Zeiteintrag als beendet.
+_Avoid_: Schicht, Dienst
+
+**Pause**:
+Eine Unterbrechung innerhalb eines Arbeitstags. Sie ist kein Zeiteintrag und zählt nicht zur Arbeitszeit.
 
 **Arbeitszeitnachweis**:
 Die gesetzlich vorgeschriebene Aufzeichnung der Arbeitszeit eines Mitarbeiters, gebildet aus seinen Zeiteinträgen einschließlich Fahrten.

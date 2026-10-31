@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { devices, expect, test, type Page } from "@playwright/test";
 import { berlinerDatum, berlinerZeitpunkt } from "../src/lib/berliner-zeit";
 import {
+  beendeArbeitstag,
   erwarteAngemeldet,
   feld,
   meldeAb,
@@ -63,7 +64,7 @@ async function zeiteintraegeVon(zugang: TestZugang) {
   return data ?? [];
 }
 
-test("Ein Vorarbeiter startet, stoppt, trägt nach und ändert für einen Kollegen; der Kollege sieht, wer erfasst hat", async ({
+test("Ein Vorarbeiter startet, beendet, trägt nach und ändert für einen Kollegen; der Kollege sieht, wer erfasst hat", async ({
   page,
 }) => {
   const { firmaA } = testdaten();
@@ -88,13 +89,13 @@ test("Ein Vorarbeiter startet, stoppt, trägt nach und ändert für einen Kolleg
   await page.getByRole("link", { name: kollege.name }).click();
   await expect(page.getByRole("heading", { name: `Erfassung für ${kollege.name}` })).toBeVisible();
 
-  // Live: Start und Stopp für den Kollegen.
+  // Live: Start und „Arbeitstag beenden“ für den Kollegen.
   await waehleAus(page, objekt.bezeichnung, taetigkeit.name);
   await page.getByRole("button", { name: "Start", exact: true }).click();
   const laufend = page.getByRole("status").filter({ hasText: "Läuft seit" });
   await expect(laufend).toContainText(`${objekt.bezeichnung} · ${taetigkeit.name}`);
   await expect(laufend).toContainText(angelegtVonVorarbeiter);
-  await page.getByRole("button", { name: "Stopp" }).click();
+  await beendeArbeitstag(page);
   const live = page.getByRole("listitem").filter({ hasText: objekt.bezeichnung });
   await expect(live).toContainText(angelegtVonVorarbeiter);
   await expect(live).not.toContainText("Nachtrag");

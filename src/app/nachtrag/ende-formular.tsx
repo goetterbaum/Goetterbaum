@@ -64,7 +64,7 @@ export function EndeFormular({
           className={styles.eingabe}
         />
       </label>
-      <button type="submit" className={`${styles.gross} ${styles.stopp}`} disabled={laeuft}>
+      <button type="submit" className={`${styles.gross} ${styles.beenden}`} disabled={laeuft}>
         {laeuft ? t.speichernLaeuft : t.endeSpeichern}
       </button>
       <Fehlermeldung zustand={zustand} />

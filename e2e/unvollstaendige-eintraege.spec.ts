@@ -37,9 +37,9 @@ async function laufenderEintrag(firmaId: string, mitarbeiter: TestZugang, beginn
 async function gespeicherterEintrag(id: string) {
   const { data } = await dienstZugang()!
     .from("zeiteintrag")
-    .select("ende, nachtrag")
+    .select("ende, nachtrag, arbeitstag_endet_hier")
     .eq("id", id)
-    .single<{ ende: string | null; nachtrag: boolean }>();
+    .single<{ ende: string | null; nachtrag: boolean; arbeitstag_endet_hier: boolean }>();
   return data!;
 }
 
@@ -66,8 +66,10 @@ test.describe("am Handy", () => {
     await expect(
       page.getByText("läuft seit mehr als 12 Stunden").filter({ visible: true }),
     ).toBeVisible();
-    // Ein Stopp würde "jetzt" als Ende speichern; deshalb gibt es keinen.
-    await expect(page.getByRole("button", { name: "Stopp" })).toHaveCount(0);
+    // Jeder Knopf würde "jetzt" als Ende speichern; deshalb gibt es keinen.
+    for (const knopf of ["Fertig hier", "Arbeitstag beenden"]) {
+      await expect(page.getByRole("button", { name: knopf })).toHaveCount(0);
+    }
     expect((await gespeicherterEintrag(id)).ende).toBeNull();
 
     // Ein Ende in der Zukunft wird abgelehnt, die Angaben bleiben stehen.
@@ -90,10 +92,12 @@ test.describe("am Handy", () => {
     await expect(eintrag).toContainText("Nachtrag");
     const gespeichert = await gespeicherterEintrag(id);
     expect(gespeichert.nachtrag).toBe(true);
+    // Meist wurde nur das Beenden des Arbeitstags vergessen.
+    expect(gespeichert.arbeitstag_endet_hier).toBe(true);
     expect(Date.parse(gespeichert.ende!)).toBe(ende);
   });
 
-  test("Ein Eintrag, der noch keine 12 Stunden läuft, hat weiterhin den Stopp", async ({
+  test("Ein Eintrag, der noch keine 12 Stunden läuft, hat „Fertig hier“ und „Arbeitstag beenden“", async ({
     page,
   }) => {
     const { firmaA } = testdaten();
@@ -102,11 +106,12 @@ test.describe("am Handy", () => {
 
     await meldeAn(page, ich);
     await erwarteAngemeldet(page, ich.name);
-    await expect(page.getByRole("button", { name: "Stopp" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Fertig hier" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Arbeitstag beenden" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Unvollständig", exact: true })).toHaveCount(0);
   });
 
-  test("Wird der Eintrag unvollständig, während die Seite offen ist, speichert der Stopp nichts", async ({
+  test("Wird der Eintrag unvollständig, während die Seite offen ist, speichert „Fertig hier“ nichts", async ({
     page,
   }) => {
     const { firmaA } = testdaten();
@@ -115,7 +120,7 @@ test.describe("am Handy", () => {
 
     await meldeAn(page, ich);
     await erwarteAngemeldet(page, ich.name);
-    await expect(page.getByRole("button", { name: "Stopp" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Fertig hier" })).toBeVisible();
     // Während die Seite offen ist, vergehen die 12 Stunden.
     const { error } = await dienstZugang()!
       .from("zeiteintrag")
@@ -123,12 +128,21 @@ test.describe("am Handy", () => {
       .eq("id", id);
     if (error) throw error;
 
-    // Die Seite lädt neu und zeigt statt des Stopps das Formular für das
-    // richtige Ende.
-    await page.getByRole("button", { name: "Stopp" }).click();
+    // Die Seite lädt neu und zeigt statt der Knöpfe das Formular für das
+    // richtige Ende. Eine Fahrt startet nicht.
+    await page.getByRole("button", { name: "Fertig hier" }).click();
     await expect(page.getByRole("heading", { name: "Unvollständig", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Stopp" })).toHaveCount(0);
-    expect(await gespeicherterEintrag(id)).toMatchObject({ ende: null, nachtrag: false });
+    await expect(page.getByRole("button", { name: "Fertig hier" })).toHaveCount(0);
+    expect(await gespeicherterEintrag(id)).toMatchObject({
+      ende: null,
+      nachtrag: false,
+      arbeitstag_endet_hier: false,
+    });
+    const { count } = await dienstZugang()!
+      .from("zeiteintrag")
+      .select("id", { count: "exact", head: true })
+      .eq("mitarbeiter_id", ich.id);
+    expect(count).toBe(1);
   });
 });
 

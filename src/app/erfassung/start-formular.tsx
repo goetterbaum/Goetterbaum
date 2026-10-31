@@ -18,15 +18,18 @@ const MELDUNGEN = {
 };
 
 // Start eines Zeiteintrags: Objekt suchen, Tätigkeit und gegebenenfalls
-// einen Zusatzauftrag wählen, Start. Oder eine Fahrt ohne Objekt starten.
+// einen Zusatzauftrag wählen, Start. Oder, mit fahrtStarten, eine Fahrt
+// ohne Objekt starten.
 export function StartFormular({
   fuer,
+  fahrtStarten: mitFahrt,
   objekte,
   taetigkeiten,
   zusatzauftraege,
 }: {
   // Der Mitarbeiter, dessen Zeit erfasst wird.
   fuer: string;
+  fahrtStarten: boolean;
   // Nur aktive Objekte und Tätigkeiten.
   objekte: ObjektZurAuswahl[];
   taetigkeiten: TaetigkeitZurAuswahl[];
@@ -74,12 +77,14 @@ export function StartFormular({
         </button>
         <Fehlermeldung zustand={start} />
       </form>
-      <form action={fahrtStartenLassen} className={styles.formular}>
-        <button type="submit" className={`${styles.gross} ${styles.fahrt}`} disabled={laeuft}>
-          {fahrtLaeuft ? texte.erfassung.startLaeuft : texte.erfassung.fahrtStarten}
-        </button>
-        <Fehlermeldung zustand={fahrt} />
-      </form>
+      {mitFahrt && (
+        <form action={fahrtStartenLassen} className={styles.formular}>
+          <button type="submit" className={`${styles.gross} ${styles.fahrt}`} disabled={laeuft}>
+            {fahrtLaeuft ? texte.erfassung.startLaeuft : texte.erfassung.fahrtStarten}
+          </button>
+          <Fehlermeldung zustand={fahrt} />
+        </form>
+      )}
     </>
   );
 }

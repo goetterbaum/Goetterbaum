@@ -71,6 +71,15 @@ export async function linkAusMail(email: string, typ: "invite" | "recovery") {
   return `/auth/bestaetigen?token_hash=${data.properties.hashed_token}&type=${typ}`;
 }
 
+// Beendet den Arbeitstag in der Live-Erfassung, mit Bestätigung der
+// Rückfrage.
+export async function beendeArbeitstag(page: Page) {
+  await page.getByRole("button", { name: "Arbeitstag beenden" }).click();
+  await expect(page.getByText("Arbeitstag wirklich beenden?")).toBeVisible();
+  await page.getByRole("button", { name: "Ja, beenden" }).click();
+  await expect(page.getByText(/^Läuft seit/)).toHaveCount(0);
+}
+
 export async function legePasswortFest(page: Page, passwort: string) {
   await expect(page.getByRole("heading", { name: "Passwort festlegen" })).toBeVisible();
   await feld(page, "Neues Passwort").fill(passwort);
