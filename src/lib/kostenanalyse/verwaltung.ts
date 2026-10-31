@@ -9,10 +9,17 @@ import type { Arbeitgeberkosten } from "@/lib/arbeitgeberkosten/regeln";
 import { type Parameter } from "@/lib/auswertungen/zeitraum";
 import { berlinerDatum, berlinerMitternacht } from "@/lib/berliner-zeit";
 import { ladeFirma } from "@/lib/firma/verwaltung";
-import { kostenanalyse, type Kostenanalyse, type ZeiteintragFuerKosten } from "@/lib/kostenanalyse";
+import {
+  kostenanalyse,
+  tagesansicht,
+  type Kostenanalyse,
+  type TagesEingabe,
+  type Tagesansicht,
+  type ZeiteintragFuerKosten,
+} from "@/lib/kostenanalyse";
 import { ladeKundenliste } from "@/lib/kunden/verwaltung";
 import { alleSeiten } from "@/lib/supabase/alle-seiten";
-import { kostenZeitraum, type KostenZeitraum } from "./zeitraum";
+import { kostenTag, kostenZeitraum, monatDerKosten, type KostenZeitraum } from "./zeitraum";
 
 export type Namen = {
   kunden: Map<string, string>;
@@ -24,6 +31,13 @@ export type Namen = {
 export type GeladeneKostenanalyse = {
   zeitraum: KostenZeitraum;
   ergebnis: Kostenanalyse;
+  namen: Namen;
+};
+
+export type GeladeneTagesansicht = {
+  // Der Tag als "JJJJ-MM-TT".
+  datum: string;
+  ergebnis: Tagesansicht;
   namen: Namen;
 };
 
@@ -77,6 +91,29 @@ export async function ladeKostenanalyse(
   parameter: Parameter,
 ): Promise<GeladeneKostenanalyse> {
   const zeitraum = kostenZeitraum(parameter, Date.now());
+  const { eingabe, namen } = await ladeEingabe(supabase, firmaId, zeitraum);
+  return { zeitraum, ergebnis: kostenanalyse({ ...eingabe, monate: zeitraum.monate }), namen };
+}
+
+// Die Tagesansicht zum Tag aus der Adresszeile (datum; ohne Angabe heute
+// in Berlin). Geladen wird der ganze Monat des Tags, denn der
+// Pauschal-Anteil hängt an allen Einsätzen im Monat.
+export async function ladeTagesansicht(
+  supabase: SupabaseClient,
+  firmaId: string,
+  parameter: Parameter,
+): Promise<GeladeneTagesansicht> {
+  const jetzt = Date.now();
+  const datum = kostenTag(parameter, jetzt);
+  const { eingabe, namen } = await ladeEingabe(supabase, firmaId, monatDerKosten(datum));
+  return { datum, ergebnis: tagesansicht(eingabe, datum, berlinerDatum(jetzt)), namen };
+}
+
+async function ladeEingabe(
+  supabase: SupabaseClient,
+  firmaId: string,
+  zeitraum: KostenZeitraum,
+): Promise<{ eingabe: TagesEingabe; namen: Namen }> {
   const [
     firma,
     kunden,
@@ -151,8 +188,7 @@ export async function ladeKostenanalyse(
     (jeMitarbeiter[w.mitarbeiter_id] ??= []).push(alsArbeitgeberkosten(w));
   }
 
-  const ergebnis = kostenanalyse({
-    monate: zeitraum.monate,
+  const eingabe: TagesEingabe = {
     kunden: kunden.map((k) => ({
       id: k.id,
       rundungsregel: k.rundungsregel ?? firma.rundungsregel,
@@ -186,11 +222,10 @@ export async function ladeKostenanalyse(
     })),
     zeiteintraege,
     arbeitgeberkosten: { standard: standard.map(alsArbeitgeberkosten), jeMitarbeiter },
-  });
+  };
 
   return {
-    zeitraum,
-    ergebnis,
+    eingabe,
     namen: {
       kunden: new Map(kunden.map((k) => [k.id, k.name])),
       objekte: new Map(objekte.map((o) => [o.id, o.bezeichnung])),

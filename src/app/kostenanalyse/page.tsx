@@ -53,6 +53,9 @@ async function Inhalt({
   return (
     <>
       <p>{t.hinweis}</p>
+      <p>
+        <Link href="/kostenanalyse/tag">{t.zurTagesansicht}</Link>
+      </p>
       <form action="/kostenanalyse">
         <Monatsauswahl
           gewaehlt={zeitraum.ganzesJahr ? null : zeitraum.monate[0]}

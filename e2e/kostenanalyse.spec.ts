@@ -152,8 +152,48 @@ test("Büro trägt Arbeitgeberkosten ein und sieht in der Kostenanalyse die rich
       /08:00–09:00\s*1:00\sStd\.\s*0:00\sStd\.\s*26,00\s€\s*30,00\s€\s*vorläufig/,
     );
 
-    // Das ganze Jahr: zwölf Pauschalen.
+    // Der Tag in den Details führt in die Tagesansicht dieses Tags. Anna:
+    // Villa 2 Std. für 60,00 €; Pauschal-Objekt mit seinem einzigen Einsatz
+    // im September, also die ganze Pauschale. Je Objekt die halbe Fahrt
+    // und die halbe Rückfahrt (30 Min.), alles zu 31 €.
+    await page.getByRole("link", { name: "14.09.2026", exact: true }).click();
+    await expect(page).toHaveURL(/\/kostenanalyse\/tag\?datum=2026-09-14$/);
+    await expect(page.getByRole("heading", { name: "Tagesansicht 14.09.2026" })).toBeVisible();
+    await expect(page.getByRole("row", { name: `${anna.name} (eigener Wert)` })).toBeVisible();
+    await expect(page.getByRole("row", { name: "Arbeitstag 08:00–13:00" })).toBeVisible();
+    await expect(zeile(page, villa.bezeichnung)).toHaveText(
+      /2:00\sStd\.\s*0:30\sStd\.\s*60,00\s€\s*77,50\s€\s*-17,50\s€\s*vorläufig/,
+    );
+    await expect(zeile(page, pauschal.bezeichnung)).toHaveText(
+      /2:00\sStd\.\s*0:30\sStd\.\s*500,00\s€\s*77,50\s€\s*422,50\s€\s*vorläufig/,
+    );
+    await expect(zeile(page, `Tagessumme ${anna.name}`)).toHaveText(
+      /4:00\sStd\.\s*1:00\sStd\.\s*560,00\s€\s*155,00\s€\s*405,00\s€\s*vorläufig/,
+    );
+    await expect(page.getByText(ben.name)).toHaveCount(0);
+
+    // Mit › zum nächsten Tag: Ben eine Stunde in der Villa zum Standard.
+    await page.getByRole("link", { name: "Folgetag" }).click();
+    await expect(page.getByRole("heading", { name: "Tagesansicht 15.09.2026" })).toBeVisible();
+    await expect(page.getByRole("row", { name: `${ben.name} (Standard)` })).toBeVisible();
+    await expect(zeile(page, villa.bezeichnung)).toHaveText(
+      /1:00\sStd\.\s*0:00\sStd\.\s*30,00\s€\s*26,00\s€\s*4,00\s€\s*vorläufig/,
+    );
+    await expect(page.getByText(anna.name)).toHaveCount(0);
+
+    // Ohne Angabe zeigt die Tagesansicht heute.
     await page.getByRole("link", { name: "Zurück zur Objektübersicht" }).click();
+    await page.getByRole("link", { name: "Tagesansicht je Mitarbeiter" }).click();
+    const heute = new Intl.DateTimeFormat("de-DE", {
+      timeZone: "Europe/Berlin",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).format(new Date());
+    await expect(page.getByRole("heading", { name: `Tagesansicht ${heute}` })).toBeVisible();
+
+    // Das ganze Jahr: zwölf Pauschalen.
+    await page.goto("/kostenanalyse?von=2026-09-01&bis=2026-09-30");
     await page.getByRole("button", { name: "Ganzes Jahr" }).click();
     await expect(page).toHaveURL(/von=2026-01-01&bis=2026-12-31/);
     await expect(page.getByRole("heading", { name: "Objektübersicht Jahr 2026" })).toBeVisible();
@@ -177,6 +217,9 @@ test("Mitarbeiter und Vorarbeiter sehen keine Kostenanalyse", async ({ page }) =
       await expect(page.locator("table")).toHaveCount(0);
       await page.goto("/kostenanalyse/details");
       await expect(page.getByText("Die Kostenanalyse darf nur das Büro sehen.")).toBeVisible();
+      await page.goto("/kostenanalyse/tag");
+      await expect(page.getByText("Die Kostenanalyse darf nur das Büro sehen.")).toBeVisible();
+      await expect(page.locator("table")).toHaveCount(0);
       const antwort = await page.request.get("/kostenanalyse/csv");
       expect(antwort.status(), rolle).toBe(403);
       await page.context().clearCookies();

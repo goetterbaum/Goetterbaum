@@ -133,7 +133,11 @@ function EintragsZeile({ eintrag: e, namen }: { eintrag: BewerteterEintrag; name
   const fehlt = e.kostenCent === null;
   return (
     <tr>
-      <td>{datumAlsText(e.datum)}</td>
+      <td>
+        <Link href={`/kostenanalyse/tag?${new URLSearchParams({ datum: e.datum })}`}>
+          {datumAlsText(e.datum)}
+        </Link>
+      </td>
       <td>{e.herkunft ? t.mitHerkunft(mitarbeiter, t.herkunft[e.herkunft]) : mitarbeiter}</td>
       <td>
         {t.vonBis(berlinerUhrzeit(Date.parse(e.beginn)), berlinerUhrzeit(Date.parse(e.ende)))}
