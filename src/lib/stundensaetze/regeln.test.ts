@@ -45,3 +45,27 @@ test("Ein vorhandener Objektsatz wird geändert oder, auf den bisherigen Satz ge
   expect(objektsatzFestlegen(3400, mitObjektsatz)).toBe("entfernen");
   expect(objektsatzFestlegen(3800, { ...OHNE_ABSPRACHE, objektCent: 3150 })).toBe("entfernen");
 });
+
+test("Ein Stundensatz des Zusatzauftrags hat Vorrang vor Objekt, Kunde und Standard", () => {
+  expect(
+    geltenderStundensatz({
+      standardCent: 3800,
+      kundeCent: 3400,
+      objektCent: 3150,
+      zusatzauftragCent: 5500,
+    }),
+  ).toEqual({ stundensatzCent: 5500, herkunft: "zusatzauftrag" });
+  expect(geltenderStundensatz({ ...OHNE_ABSPRACHE, zusatzauftragCent: 2990 })).toEqual({
+    stundensatzCent: 2990,
+    herkunft: "zusatzauftrag",
+  });
+  // Ohne eigenen Satz des Zusatzauftrags gilt Objekt → Kunde → Standard.
+  expect(
+    geltenderStundensatz({
+      standardCent: 3800,
+      kundeCent: 3400,
+      objektCent: null,
+      zusatzauftragCent: null,
+    }),
+  ).toEqual({ stundensatzCent: 3400, herkunft: "kunde" });
+});

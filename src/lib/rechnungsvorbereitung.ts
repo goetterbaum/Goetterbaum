@@ -40,6 +40,9 @@ export type Zusatzauftrag = {
   objektId: string;
   abrechnungsart: "stunden" | "festbetrag";
   festbetragCent: number | null;
+  // Eigener Satz eines Zusatzauftrags nach Stunden für alle seine
+  // Tätigkeiten; null heißt: Es gelten die des Objekts bzw. Kunden.
+  stundensatzCent: number | null;
   erledigt: boolean;
 };
 
@@ -181,7 +184,7 @@ export function rechnungsvorbereitung(eingabe: Eingabe): Rechnungsvorbereitung {
     const regulaer = berechneteTage.filter(
       (tag) => tag.objektId === objekt.id && tag.zusatzauftragId === null,
     );
-    for (const stunden of stundenJeTaetigkeit(regulaer, objekt.id, eingabe)) {
+    for (const stunden of stundenJeTaetigkeit(regulaer, objekt.id, null, eingabe)) {
       positionen.push({ art: "stunden", objektId: objekt.id, ...stunden });
     }
   }
@@ -195,7 +198,8 @@ export function rechnungsvorbereitung(eingabe: Eingabe): Rechnungsvorbereitung {
       continue;
     }
     const fuerAuftrag = berechneteTage.filter((tag) => tag.zusatzauftragId === zusatzauftragId);
-    for (const stunden of stundenJeTaetigkeit(fuerAuftrag, objektId, eingabe)) {
+    const { stundensatzCent } = zusatzauftrag;
+    for (const stunden of stundenJeTaetigkeit(fuerAuftrag, objektId, stundensatzCent, eingabe)) {
       positionen.push({ art: "zusatzauftrag-stunden", zusatzauftragId, objektId, ...stunden });
     }
   }
@@ -263,12 +267,12 @@ export function rechnungsvorbereitungFuerZusatzauftrag(
       a.datum.localeCompare(b.datum) ||
       taetigkeitStelle(a.taetigkeitId) - taetigkeitStelle(b.taetigkeitId),
   );
-  const positionen: Position[] = stundenJeTaetigkeit(tage, objektId, eingabe).map((stunden) => ({
-    art: "zusatzauftrag-stunden",
-    zusatzauftragId,
+  const positionen: Position[] = stundenJeTaetigkeit(
+    tage,
     objektId,
-    ...stunden,
-  }));
+    zusatzauftrag.stundensatzCent,
+    eingabe,
+  ).map((stunden) => ({ art: "zusatzauftrag-stunden", zusatzauftragId, objektId, ...stunden }));
   return {
     positionen,
     summeCent: positionen.reduce((summe, p) => summe + p.betragCent, 0),
@@ -278,10 +282,12 @@ export function rechnungsvorbereitungFuerZusatzauftrag(
 }
 
 // Die Stunden je Tätigkeit aus den Tagen einer Position im Objekt, in der
-// Reihenfolge der Tätigkeiten.
+// Reihenfolge der Tätigkeiten. zusatzauftragSatzCent ist der eigene Satz
+// eines Zusatzauftrags nach Stunden, sonst null.
 function stundenJeTaetigkeit(
   tage: GerundeterTag[],
   objektId: string,
+  zusatzauftragSatzCent: number | null,
   { taetigkeiten, objektStundensaetze }: Pick<Eingabe, "taetigkeiten" | "objektStundensaetze">,
 ): Stunden[] {
   return taetigkeiten.flatMap((taetigkeit) => {
@@ -296,6 +302,7 @@ function stundenJeTaetigkeit(
       standardCent: taetigkeit.standardStundensatzCent,
       kundeCent: taetigkeit.kundenStundensatzCent,
       objektCent: objektSatz?.stundensatzCent ?? null,
+      zusatzauftragCent: zusatzauftragSatzCent,
     });
     const betragCent = Math.round((minuten * stundensatzCent) / 60);
     return [{ taetigkeitId: taetigkeit.id, minuten, stundensatzCent, betragCent }];

@@ -113,6 +113,7 @@ test("Zusatzaufträge stehen getrennt mit ihrer Beschreibung, nach Stunden mit T
         objektId: "o-pauschal",
         abrechnungsart: "stunden",
         festbetragCent: null,
+        stundensatzCent: null,
         erledigt: false,
       },
       {
@@ -120,6 +121,7 @@ test("Zusatzaufträge stehen getrennt mit ihrer Beschreibung, nach Stunden mit T
         objektId: "o-stunden",
         abrechnungsart: "festbetrag",
         festbetragCent: 89000,
+        stundensatzCent: null,
         erledigt: true,
       },
     ],
@@ -201,6 +203,7 @@ test("Quartalsweise: Pauschalen je Monat, Stunden und Zusatzaufträge mit dem ga
         objektId: "o-pauschal",
         abrechnungsart: "stunden",
         festbetragCent: null,
+        stundensatzCent: null,
         erledigt: false,
       },
       {
@@ -208,6 +211,7 @@ test("Quartalsweise: Pauschalen je Monat, Stunden und Zusatzaufträge mit dem ga
         objektId: "o-stunden",
         abrechnungsart: "festbetrag",
         festbetragCent: 89000,
+        stundensatzCent: null,
         erledigt: true,
       },
     ],

@@ -56,3 +56,33 @@ test("Nach dem Anlegen ist das Formular leer für den nächsten Zusatzauftrag", 
   );
   expect(screen.queryByLabelText("Festbetrag in Euro")).toBeNull();
 });
+
+test("Den Stundensatz mit Hinweis gibt es nur bei Abrechnung nach Stunden", () => {
+  render(
+    <ZusatzauftragFormular
+      aktion={async () => OK()}
+      vorgabe={{
+        beschreibung: "Sturmschaden Hof",
+        abrechnungsart: "stunden",
+        festbetrag_cent: null,
+        stundensatz_cent: 5250,
+      }}
+      knopf="Speichern"
+      knopfLaeuft="Wird gespeichert …"
+    />,
+  );
+  const stundensatz = screen.getByLabelText<HTMLInputElement>("Stundensatz in Euro");
+  expect(stundensatz.value).toBe("52,50");
+  expect(stundensatz.required).toBe(false);
+  expect(
+    screen.getByText("Leer lassen: Es gelten die Sätze des Objekts bzw. Kunden."),
+  ).toBeTruthy();
+
+  fireEvent.change(screen.getByLabelText("Abrechnung des Zusatzauftrags"), {
+    target: { value: "festbetrag" },
+  });
+  expect(screen.queryByLabelText("Stundensatz in Euro")).toBeNull();
+  expect(
+    screen.queryByText("Leer lassen: Es gelten die Sätze des Objekts bzw. Kunden."),
+  ).toBeNull();
+});

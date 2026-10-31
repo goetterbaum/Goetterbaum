@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useActionState, useState } from "react";
+import { startTransition, useActionState, useId, useState } from "react";
 import { ZUSATZAUFTRAG_ABRECHNUNGSARTEN, type ZusatzauftragAbrechnungsart } from "@/lib/abrechnung";
 import { euroAlsEingabe } from "@/lib/geld";
 import { START, type Rueckmeldung } from "@/lib/rueckmeldung";
@@ -12,11 +12,14 @@ function felderAus(vorgabe?: ZusatzauftragDaten) {
     beschreibung: vorgabe?.beschreibung ?? "",
     abrechnungsart: vorgabe?.abrechnungsart ?? ("stunden" as ZusatzauftragAbrechnungsart),
     festbetrag: vorgabe?.festbetrag_cent ? euroAlsEingabe(vorgabe.festbetrag_cent) : "",
+    stundensatz: vorgabe?.stundensatz_cent ? euroAlsEingabe(vorgabe.stundensatz_cent) : "",
   };
 }
 
 // Formular für einen Zusatzauftrag, zum Anlegen wie zum Bearbeiten. Das
-// Feld für den Festbetrag erscheint nur bei Abrechnungsart Festbetrag.
+// Feld für den Festbetrag erscheint nur bei Abrechnungsart Festbetrag, das
+// freiwillige für den Stundensatz nur nach Stunden. Beim Wechsel auf
+// Festbetrag wird der Stundensatz also nicht mitgeschickt und entfällt.
 // Alle Felder hält das Formular selbst, und es schickt selbst ab statt
 // über das action-Attribut: Sonst setzt React das Formular nach jeder
 // Aktion zurück, auch nach einer Fehlermeldung, und die Auswahlliste der
@@ -39,6 +42,7 @@ export function ZusatzauftragFormular({
 }) {
   const t = texte.zusatzauftraege;
   const [felder, setFelder] = useState(() => felderAus(vorgabe));
+  const hinweisId = useId();
   const [zustand, ausfuehren, laeuft] = useActionState(
     async (vorher: Rueckmeldung, formData: FormData) => {
       const ergebnis = await aktion(vorher, formData);
@@ -91,6 +95,23 @@ export function ZusatzauftragFormular({
           </select>
         </label>
       </p>
+      {felder.abrechnungsart === "stunden" && (
+        <p>
+          <label>
+            {t.stundensatz}
+            <br />
+            <input
+              name="stundensatz"
+              inputMode="decimal"
+              aria-describedby={hinweisId}
+              value={felder.stundensatz}
+              onChange={(e) => setFelder({ ...felder, stundensatz: e.target.value })}
+            />
+          </label>
+          <br />
+          <small id={hinweisId}>{t.stundensatzHinweis}</small>
+        </p>
+      )}
       {felder.abrechnungsart === "festbetrag" && (
         <p>
           <label>

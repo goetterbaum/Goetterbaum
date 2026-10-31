@@ -177,8 +177,14 @@ export async function legeZusatzauftragAn(
   {
     beschreibung = `Zusatzauftrag ${randomUUID().slice(0, 8)}`,
     festbetragCent = null,
+    stundensatzCent = null,
     erledigt = false,
-  }: { beschreibung?: string; festbetragCent?: number | null; erledigt?: boolean } = {},
+  }: {
+    beschreibung?: string;
+    festbetragCent?: number | null;
+    stundensatzCent?: number | null;
+    erledigt?: boolean;
+  } = {},
 ) {
   const { data, error } = await supabase
     .from("zusatzauftrag")
@@ -188,6 +194,7 @@ export async function legeZusatzauftragAn(
       beschreibung,
       abrechnungsart: festbetragCent === null ? "stunden" : "festbetrag",
       festbetrag_cent: festbetragCent,
+      stundensatz_cent: stundensatzCent,
       erledigt,
     })
     .select("id, beschreibung")

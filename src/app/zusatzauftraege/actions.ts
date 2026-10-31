@@ -48,11 +48,14 @@ export async function zusatzauftragSpeichern(
   const eingabe = pruefeZusatzauftragEingabe(formData);
   if (!eingabe.ok) return FEHLER(eingabe.fehler);
   // Die Datenbank lehnt das ohnehin ab; hier nur mit verständlicher Meldung.
-  if (
-    eingabe.daten.abrechnungsart !== bestand.abrechnungsart &&
-    (await hatAbgerechneteZeit(supabase, id))
-  ) {
-    return FEHLER(texte.zusatzauftraege.fehlerAbrechnungsartFest);
+  const artGeaendert = eingabe.daten.abrechnungsart !== bestand.abrechnungsart;
+  const satzGeaendert = eingabe.daten.stundensatz_cent !== bestand.stundensatz_cent;
+  if ((artGeaendert || satzGeaendert) && (await hatAbgerechneteZeit(supabase, id))) {
+    return FEHLER(
+      artGeaendert
+        ? texte.zusatzauftraege.fehlerAbrechnungsartFest
+        : texte.zusatzauftraege.fehlerStundensatzFest,
+    );
   }
 
   const { error } = await supabase.from("zusatzauftrag").update(eingabe.daten).eq("id", id);

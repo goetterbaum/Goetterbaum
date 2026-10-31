@@ -15,7 +15,7 @@ export type ZusatzauftragMitObjekt = Zusatzauftrag & {
 };
 
 const SPALTEN =
-  "id, objekt_id, beschreibung, abrechnungsart, festbetrag_cent, erledigt, abgerechnet_in";
+  "id, objekt_id, beschreibung, abrechnungsart, festbetrag_cent, stundensatz_cent, erledigt, abgerechnet_in";
 
 // Alle Zusatzaufträge eines Objekts, die offenen zuerst. Welche der Nutzer
 // sehen darf, entscheiden die Zugriffsregeln der Datenbank (nur das Büro
@@ -51,8 +51,8 @@ export async function ladeZusatzauftrag(
   return data;
 }
 
-// Ob schon Zeit für den Zusatzauftrag abgerechnet ist. Dann bleibt seine
-// Abrechnungsart fest.
+// Ob schon Zeit für den Zusatzauftrag abgerechnet ist. Dann bleiben seine
+// Abrechnungsart und sein Stundensatz fest.
 export async function hatAbgerechneteZeit(
   supabase: SupabaseClient,
   zusatzauftragId: string,
