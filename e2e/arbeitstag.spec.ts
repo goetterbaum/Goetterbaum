@@ -296,7 +296,9 @@ test("„Pause“ während einer kurzen Fahrt entfernt sie, „Arbeitstag beende
   // Nach der Pause fragt „Arbeitstag beenden“ nach, ohne Fahrt in der
   // Rückfrage, und setzt den Vermerk am Objekt.
   await knopf(page, "Arbeitstag beenden").click();
-  await expect(page.getByText("Arbeitstag wirklich beenden?")).not.toContainText("Fahrt");
+  await expect(page.getByText("Arbeitstag wirklich beenden?")).toHaveText(
+    "Arbeitstag wirklich beenden?",
+  );
   await knopf(page, "Abbrechen").click();
   await expect(knopf(page, "Fahrt starten")).toBeVisible();
   await knopf(page, "Arbeitstag beenden").click();

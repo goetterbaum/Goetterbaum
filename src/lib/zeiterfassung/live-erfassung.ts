@@ -12,7 +12,7 @@ export type ZustandDerErfassung = "nichts" | "pause" | "objekt" | "fahrt" | "unv
 type Eintrag = Pick<MeinZeiteintrag, "art" | "beginn" | "ende" | "arbeitstag_endet_hier">;
 
 // Nach so vielen Stunden ohne Zeiteintrag gilt ein Arbeitstag als beendet.
-// Dieselbe Grenze steht in der Datenbank (privat.arbeitstag_offen).
+// Dieselbe Grenze steht in der Datenbank (privat.offener_arbeitstag_endet_mit).
 export const ARBEITSTAG_ENDET_NACH_STUNDEN = 12;
 
 // Ob der Arbeitstag offen ist: Es läuft etwas, oder der zuletzt beendete
@@ -47,7 +47,8 @@ export type Knoepfe = {
   fertigHier: boolean;
   // Beendet den laufenden Eintrag, danach startet nichts.
   pause: boolean;
-  // Wie Pause, beendet aber auch den Arbeitstag.
+  // Wie Pause, beendet aber auch den Arbeitstag. Nach einer Pause beendet
+  // er nur den Arbeitstag.
   arbeitstagBeenden: boolean;
   // Statt eines Knopfs das Formular für das richtige Ende.
   endeNachtragen: boolean;

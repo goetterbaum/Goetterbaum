@@ -35,7 +35,8 @@ export async function Erfassung({
   const supabase = await createClient();
   const { eintraege, jetzt } = await ladeZeiteintraegeVon(supabase, mitarbeiterId);
   const laufender = eintraege.find((e) => e.ende === null);
-  const erlaubt = knoepfe(zustandDerErfassung(eintraege, jetzt));
+  const zustand = zustandDerErfassung(eintraege, jetzt);
+  const erlaubt = knoepfe(zustand);
   // Die Auswahl braucht nur das Start-Formular.
   const auswahl = erlaubt.startFormular ? await ladeAuswahl(supabase) : null;
 
@@ -52,10 +53,8 @@ export async function Erfassung({
       {auswahl && (
         <StartFormular fuer={mitarbeiterId} fahrtStarten={erlaubt.fahrtStarten} {...auswahl} />
       )}
-      {/* Nach einer Pause; während eines laufenden Eintrags steht er dort. */}
-      {!laufender && erlaubt.arbeitstagBeenden && (
-        <ArbeitstagBeendenKnopf fuer={mitarbeiterId} fahrtSeit={null} />
-      )}
+      {/* Läuft etwas, steht „Arbeitstag beenden“ beim laufenden Eintrag. */}
+      {zustand === "pause" && <ArbeitstagBeendenKnopf fuer={mitarbeiterId} fahrtSeit={null} />}
       <Eintraege eintraege={eintraege} mitarbeiterId={mitarbeiterId} eigene={eigene} />
     </section>
   );

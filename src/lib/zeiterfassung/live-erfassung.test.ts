@@ -77,6 +77,15 @@ test("Ein Arbeitstag über Mitternacht bleibt offen, solange keine 12 Stunden ve
   expect(zustandDerErfassung(eintraege, nachMitternacht)).toBe("pause");
 });
 
+test("Über die Zeitumstellung zählen die echten 12 Stunden, nicht die Uhrzeit", () => {
+  // Zuletzt bis Sa., 24.10., 22:47:13 in Berlin (Sommerzeit). In der Nacht
+  // wird die Uhr um eine Stunde zurückgestellt: 12 Stunden später ist es
+  // So., 25.10., 09:47:13 (Winterzeit).
+  const eintraege = [beendet("2026-10-24T17:03:41Z", "2026-10-24T20:47:13Z")];
+  expect(arbeitstagOffen(eintraege, Date.parse("2026-10-25T08:47:13Z"))).toBe(true);
+  expect(arbeitstagOffen(eintraege, Date.parse("2026-10-25T08:47:14Z"))).toBe(false);
+});
+
 test("Entscheidend ist der zuletzt beendete Eintrag, auch wenn er zuerst in der Liste steht", () => {
   // Der Vermerk steht am früheren Eintrag, der spätere hat keinen.
   const eintraege = [
