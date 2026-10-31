@@ -16,7 +16,8 @@ import {
 } from "./testumgebung/testdaten";
 
 // Ein Arbeitstag am Handy: Nach einem Objekt startet die Fahrt von selbst,
-// und der Arbeitstag endet mit Rückfrage.
+// nach einer Pause geht es mit „Fahrt starten“ weiter, und der Arbeitstag
+// endet mit Rückfrage.
 const handy = devices["Pixel 7"];
 test.use({
   viewport: handy.viewport,
@@ -80,8 +81,9 @@ async function auswahl(firmaId: string) {
 }
 
 // Start → „Fertig hier“ → Fahrt läuft → Start am nächsten Objekt →
-// „Arbeitstag beenden“ mit Abbrechen und Bestätigen, für den Mitarbeiter
-// erfasster. Die Seite zeigt schon dessen Erfassung.
+// „Pause“ → „Fahrt starten“ → „Arbeitstag beenden“ mit Abbrechen und
+// Bestätigen, für den Mitarbeiter erfasster. Die Seite zeigt schon dessen
+// Erfassung.
 async function ganzerArbeitstag(page: Page, erfasster: TestZugang, firmaId: string) {
   const { erstes, zweites, taetigkeit } = await auswahl(firmaId);
   // Die Objekte gibt es erst seit eben; die Seite war schon geladen.
@@ -90,8 +92,10 @@ async function ganzerArbeitstag(page: Page, erfasster: TestZugang, firmaId: stri
   await waehleAus(page, erstes.bezeichnung, taetigkeit.name);
   await knopf(page, "Start").click();
   await expect(laufend(page)).toContainText(`${erstes.bezeichnung} · ${taetigkeit.name}`);
-  // Statt Stopp: „Fertig hier“ und „Arbeitstag beenden“, aber kein Start.
+  // Statt Stopp: „Fertig hier“, „Pause“ und „Arbeitstag beenden“, aber
+  // kein Start.
   await expect(knopf(page, "Stopp")).toHaveCount(0);
+  await expect(knopf(page, "Pause")).toBeVisible();
   await expect(knopf(page, "Arbeitstag beenden")).toBeVisible();
   await expect(knopf(page, "Start")).toHaveCount(0);
   await expect(knopf(page, "Fahrt starten")).toHaveCount(0);
@@ -101,6 +105,7 @@ async function ganzerArbeitstag(page: Page, erfasster: TestZugang, firmaId: stri
   await expect(laufend(page)).toContainText("Fahrt");
   await expect(knopf(page, "Fertig hier")).toHaveCount(0);
   await expect(knopf(page, "Fahrt starten")).toHaveCount(0);
+  await expect(knopf(page, "Pause")).toBeVisible();
   await expect(knopf(page, "Arbeitstag beenden")).toBeVisible();
   await expect(knopf(page, "Start")).toBeVisible();
   const nachFertigHier = await zeiteintraegeVon(erfasster);
@@ -130,34 +135,58 @@ async function ganzerArbeitstag(page: Page, erfasster: TestZugang, firmaId: stri
   await expect(laufend(page)).toContainText(`${zweites.bezeichnung} · ${taetigkeit.name}`);
   await expect(knopf(page, "Start")).toHaveCount(0);
 
+  // „Pause“ beendet das Objekt, und nichts startet. Danach geht es mit
+  // Start, „Fahrt starten“ oder „Arbeitstag beenden“ weiter.
+  await knopf(page, "Pause").click();
+  await expect(laufend(page)).toHaveCount(0);
+  await expect(knopf(page, "Start")).toBeVisible();
+  await expect(knopf(page, "Fahrt starten")).toBeVisible();
+  await expect(knopf(page, "Arbeitstag beenden")).toBeVisible();
+  await expect(knopf(page, "Pause")).toHaveCount(0);
+  const nachPause = await zeiteintraegeVon(erfasster);
+  expect(nachPause).toHaveLength(3);
+  expect(nachPause[2]).toMatchObject({ objekt_id: zweites.objektId, ende: expect.any(String) });
+
+  // Nach der Pause weiterfahren. Die Fahrt dauert eine Weile, damit sie
+  // gespeichert bleibt.
+  await knopf(page, "Fahrt starten").click();
+  await expect(laufend(page)).toContainText("Fahrt");
+  await verschiebeZeiteintraege(erfasster.id, 10);
+  await page.reload();
+
   // Abbrechen der Rückfrage ändert nichts.
   await knopf(page, "Arbeitstag beenden").click();
   await expect(page.getByText("Arbeitstag wirklich beenden?")).toBeVisible();
   await knopf(page, "Abbrechen").click();
-  await expect(laufend(page)).toContainText(zweites.bezeichnung);
+  await expect(laufend(page)).toContainText("Fahrt");
   expect((await zeiteintraegeVon(erfasster)).at(-1)?.ende).toBeNull();
 
   await beendeArbeitstag(page);
-  // Danach läuft nichts, auch keine Fahrt.
+  // Danach läuft nichts, und eine Fahrt gibt es erst wieder nach einem
+  // neuen Start an einem Objekt.
   await expect(knopf(page, "Arbeitstag beenden")).toHaveCount(0);
+  await expect(knopf(page, "Fahrt starten")).toHaveCount(0);
   await expect(knopf(page, "Start")).toBeVisible();
 
   const eintraege = await zeiteintraegeVon(erfasster);
   expect(eintraege).toMatchObject([
     { art: "taetigkeit", objekt_id: erstes.objektId, arbeitstag_endet_hier: false },
     { art: "fahrt", objekt_id: null, arbeitstag_endet_hier: false },
-    { art: "taetigkeit", objekt_id: zweites.objektId, arbeitstag_endet_hier: true },
+    { art: "taetigkeit", objekt_id: zweites.objektId, arbeitstag_endet_hier: false },
+    { art: "fahrt", objekt_id: null, arbeitstag_endet_hier: true },
   ]);
   for (const e of eintraege) {
     expect(e.ende).not.toBeNull();
     expect(e.nachtrag).toBe(false);
   }
-  erwarteLueckenlos(eintraege);
+  // Lückenlos bis zur Pause; die Pause selbst ist kein Zeiteintrag.
+  erwarteLueckenlos(eintraege.slice(0, 3));
+  expect(Date.parse(eintraege[3].beginn)).toBeGreaterThanOrEqual(Date.parse(eintraege[2].ende!));
 
-  // In der Liste stehen alle drei.
+  // In der Liste stehen alle vier.
   const liste = page.getByRole("listitem");
   await expect(liste.filter({ hasText: erstes.bezeichnung })).toHaveCount(1);
-  await expect(liste.filter({ hasText: "Fahrt" })).toContainText(/0:1\d h/);
+  await expect(liste.filter({ hasText: "Fahrt" })).toContainText([/0:1\d h/, /0:1\d h/]);
   await expect(liste.filter({ hasText: zweites.bezeichnung })).toHaveCount(1);
   return eintraege;
 }
@@ -171,7 +200,7 @@ test("Ein Mitarbeiter erfasst einen Arbeitstag: Fahrt automatisch, Ende mit Rüc
   await erwarteAngemeldet(page, ich.name);
 
   const eintraege = await ganzerArbeitstag(page, ich, firmaA.id);
-  expect(eintraege.map((e) => e.angelegt_von)).toEqual([ich.id, ich.id, ich.id]);
+  expect(eintraege.map((e) => e.angelegt_von)).toEqual([ich.id, ich.id, ich.id, ich.id]);
 });
 
 test("Ein Vorarbeiter erfasst denselben Arbeitstag für einen Kollegen", async ({ page }) => {
@@ -185,6 +214,7 @@ test("Ein Vorarbeiter erfasst denselben Arbeitstag für einen Kollegen", async (
 
   const eintraege = await ganzerArbeitstag(page, kollege, firmaA.id);
   expect(eintraege.map((e) => e.angelegt_von)).toEqual([
+    vorarbeiter.id,
     vorarbeiter.id,
     vorarbeiter.id,
     vorarbeiter.id,
@@ -239,4 +269,70 @@ test("„Arbeitstag beenden“ während der Fahrt behält sie als Rückfahrt, ei
     },
   ]);
   expect(await zeiteintraegeVon(ich)).toHaveLength(3);
+});
+
+test("„Pause“ während einer kurzen Fahrt entfernt sie, „Arbeitstag beenden“ nach der Pause setzt den Vermerk", async ({
+  page,
+}) => {
+  const { firmaA } = testdaten();
+  const ich = await legeEigenenZugangAn(firmaA.id);
+  const { erstes, taetigkeit } = await auswahl(firmaA.id);
+  await meldeAn(page, ich);
+  await erwarteAngemeldet(page, ich.name);
+
+  // Gleich nach „Fertig hier“ Pause: Die Fahrt dauert keine 2 Minuten.
+  await waehleAus(page, erstes.bezeichnung, taetigkeit.name);
+  await knopf(page, "Start").click();
+  await knopf(page, "Fertig hier").click();
+  await expect(laufend(page)).toContainText("Fahrt");
+  await knopf(page, "Pause").click();
+  await expect(laufend(page)).toHaveCount(0);
+  await expect(knopf(page, "Fahrt starten")).toBeVisible();
+  expect(await zeiteintraegeVon(ich)).toMatchObject([
+    { art: "taetigkeit", objekt_id: erstes.objektId, arbeitstag_endet_hier: false },
+  ]);
+  expect(await zeiteintraegeVon(ich)).toHaveLength(1);
+
+  // Nach der Pause fragt „Arbeitstag beenden“ nach, ohne Fahrt in der
+  // Rückfrage, und setzt den Vermerk am Objekt.
+  await knopf(page, "Arbeitstag beenden").click();
+  await expect(page.getByText("Arbeitstag wirklich beenden?")).not.toContainText("Fahrt");
+  await knopf(page, "Abbrechen").click();
+  await expect(knopf(page, "Fahrt starten")).toBeVisible();
+  await knopf(page, "Arbeitstag beenden").click();
+  await knopf(page, "Ja, beenden").click();
+  await expect(knopf(page, "Fahrt starten")).toHaveCount(0);
+  await expect(knopf(page, "Arbeitstag beenden")).toHaveCount(0);
+  await expect(knopf(page, "Start")).toBeVisible();
+  expect(await zeiteintraegeVon(ich)).toMatchObject([
+    { art: "taetigkeit", objekt_id: erstes.objektId, arbeitstag_endet_hier: true, nachtrag: false },
+  ]);
+});
+
+test("Nach mehr als 12 Stunden ohne Zeiteintrag gibt es kein „Fahrt starten“ mehr, knapp davor noch", async ({
+  page,
+}) => {
+  const { firmaA } = testdaten();
+  const ich = await legeEigenenZugangAn(firmaA.id);
+  const { erstes, taetigkeit } = await auswahl(firmaA.id);
+  await meldeAn(page, ich);
+  await erwarteAngemeldet(page, ich.name);
+
+  await waehleAus(page, erstes.bezeichnung, taetigkeit.name);
+  await knopf(page, "Start").click();
+  await knopf(page, "Pause").click();
+  await expect(knopf(page, "Fahrt starten")).toBeVisible();
+
+  // Knapp 12 Stunden später ist der Arbeitstag noch offen.
+  await verschiebeZeiteintraege(ich.id, 12 * 60 - 5);
+  await page.reload();
+  await expect(knopf(page, "Fahrt starten")).toBeVisible();
+
+  // Danach gilt er als beendet, ohne dass ein Vermerk gesetzt wird.
+  await verschiebeZeiteintraege(ich.id, 10);
+  await page.reload();
+  await expect(knopf(page, "Start")).toBeVisible();
+  await expect(knopf(page, "Fahrt starten")).toHaveCount(0);
+  await expect(knopf(page, "Arbeitstag beenden")).toHaveCount(0);
+  expect(await zeiteintraegeVon(ich)).toMatchObject([{ arbeitstag_endet_hier: false }]);
 });

@@ -27,6 +27,7 @@ function eintrag(
     ende,
     nachtrag: false,
     freigegeben: false,
+    arbeitstag_endet_hier: false,
     objekt_bezeichnung: "Haus A",
     taetigkeit_name: "Unterhaltsreinigung",
     zusatzauftrag_beschreibung: null,

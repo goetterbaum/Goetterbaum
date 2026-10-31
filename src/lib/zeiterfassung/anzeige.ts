@@ -24,6 +24,8 @@ export type MeinZeiteintrag = {
   nachtrag: boolean;
   // Vom Büro freigegeben; dann für Mitarbeiter und Vorarbeiter gesperrt.
   freigegeben: boolean;
+  // Mit diesem Eintrag endet ein Arbeitstag (setzt die Datenbank).
+  arbeitstag_endet_hier: boolean;
   objekt_bezeichnung: string | null;
   taetigkeit_name: string | null;
   // Leer bei regulärer Arbeit und bei Fahrten.

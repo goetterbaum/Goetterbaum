@@ -107,10 +107,18 @@ test("Ein Mitarbeiter startet einen Zeiteintrag mit Objekt und Tätigkeit und be
   expect(fahrt).toMatchObject({ art: "fahrt", ende: null });
 });
 
-test("Ein Mitarbeiter startet eine Fahrt ohne Objekt und beendet sie als Rückfahrt", async ({
+test("Ein Mitarbeiter startet nach einer Pause eine Fahrt ohne Objekt und beendet sie als Rückfahrt", async ({
   page,
 }) => {
-  const { ich } = await angemeldeterErfasser(page);
+  const { ich, objekt, taetigkeit } = await angemeldeterErfasser(page);
+  // Zu Beginn des Arbeitstags gibt es keine Fahrt.
+  await expect(startKnopf(page)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Fahrt starten" })).toHaveCount(0);
+
+  await waehleAus(page, objekt.bezeichnung, taetigkeit.name);
+  await startKnopf(page).click();
+  await page.getByRole("button", { name: "Pause", exact: true }).click();
+  await expect(page.getByText(/^Läuft seit/)).toHaveCount(0);
 
   await page.getByRole("button", { name: "Fahrt starten" }).click();
   await expect(page.getByText(/^Läuft seit/)).toBeVisible();
@@ -120,10 +128,13 @@ test("Ein Mitarbeiter startet eine Fahrt ohne Objekt und beendet sie als Rückfa
   await page.reload();
 
   await beendeArbeitstag(page);
-  await expect(page.getByRole("button", { name: "Fahrt starten" })).toBeVisible();
+  // Der Arbeitstag ist beendet: wieder keine Fahrt.
+  await expect(startKnopf(page)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Fahrt starten" })).toHaveCount(0);
   await expect(page.getByRole("listitem").filter({ hasText: "Fahrt" })).toHaveCount(1);
 
   expect(await zeiteintraegeVon(ich)).toEqual([
+    expect.objectContaining({ art: "taetigkeit", arbeitstag_endet_hier: false }),
     expect.objectContaining({
       art: "fahrt",
       objekt_id: null,

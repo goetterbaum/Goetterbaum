@@ -16,12 +16,13 @@ import { ladeAuswahl, ladeZeiteintraegeVon } from "@/lib/zeiterfassung/verwaltun
 import { texte } from "@/texte";
 import styles from "./erfassung.module.css";
 import { endeNachtragen } from "./actions";
-import { ArbeitstagBeendenKnopf, FertigHierKnopf } from "./laufend-knoepfe";
+import { ArbeitstagBeendenKnopf, FertigHierKnopf, PauseKnopf } from "./laufend-knoepfe";
 import { StartFormular } from "./start-formular";
 
 // Die Live-Erfassung eines Mitarbeiters: der laufende Zeiteintrag mit den
 // Knöpfen, die sein Zustand erlaubt (siehe live-erfassung.ts), und das
-// Start-Formular, wenn nichts oder eine Fahrt läuft. Darunter seine
+// Start-Formular, wenn nichts oder eine Fahrt läuft. Nach einer Pause
+// zusätzlich „Fahrt starten“ und „Arbeitstag beenden“. Darunter seine
 // Einträge der letzten Tage. eigene: der angemeldete Nutzer erfasst für
 // sich selbst, sonst als Vorarbeiter oder Büro für einen anderen.
 export async function Erfassung({
@@ -34,7 +35,7 @@ export async function Erfassung({
   const supabase = await createClient();
   const { eintraege, jetzt } = await ladeZeiteintraegeVon(supabase, mitarbeiterId);
   const laufender = eintraege.find((e) => e.ende === null);
-  const erlaubt = knoepfe(zustandDerErfassung(laufender, jetzt));
+  const erlaubt = knoepfe(zustandDerErfassung(eintraege, jetzt));
   // Die Auswahl braucht nur das Start-Formular.
   const auswahl = erlaubt.startFormular ? await ladeAuswahl(supabase) : null;
 
@@ -50,6 +51,10 @@ export async function Erfassung({
       )}
       {auswahl && (
         <StartFormular fuer={mitarbeiterId} fahrtStarten={erlaubt.fahrtStarten} {...auswahl} />
+      )}
+      {/* Nach einer Pause; während eines laufenden Eintrags steht er dort. */}
+      {!laufender && erlaubt.arbeitstagBeenden && (
+        <ArbeitstagBeendenKnopf fuer={mitarbeiterId} fahrtSeit={null} />
       )}
       <Eintraege eintraege={eintraege} mitarbeiterId={mitarbeiterId} eigene={eigene} />
     </section>
@@ -93,6 +98,7 @@ function Laufend({
         />
       )}
       {knoepfe.fertigHier && <FertigHierKnopf fuer={mitarbeiterId} />}
+      {knoepfe.pause && <PauseKnopf fuer={mitarbeiterId} />}
       {knoepfe.arbeitstagBeenden && (
         <ArbeitstagBeendenKnopf
           fuer={mitarbeiterId}

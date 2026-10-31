@@ -12,7 +12,8 @@ import {
 
 // Diese Tests gehen an der App vorbei direkt auf die öffentliche
 // Supabase-Schnittstelle. Sie prüfen die Schritte „Fertig hier“, Start
-// während einer Fahrt und „Arbeitstag beenden“ in der Datenbank selbst.
+// während einer Fahrt, „Pause“, „Fahrt starten“ und „Arbeitstag beenden“
+// in der Datenbank selbst.
 
 // Spielraum für Uhren, die zwischen Testrechner und Datenbank abweichen.
 const UHR_SPIELRAUM_MS = 2 * 60 * 1000;
@@ -245,7 +246,7 @@ test("Ein unvollständiger Eintrag wird von keinem Schritt beendet", async () =>
   });
   const vorher = await eintraegeVon(ich.id);
 
-  for (const schritt of ["fertig_hier", "arbeitstag_beenden"] as const) {
+  for (const schritt of ["fertig_hier", "pause_machen", "arbeitstag_beenden"] as const) {
     const { error } = await supabase.rpc(schritt, { wer: ich.id });
     expect(error?.code, schritt).toBe("P0002");
   }
@@ -300,7 +301,7 @@ test("Die Schritte gibt es für sich selbst, als Vorarbeiter und Büro für Koll
   const vorher = await eintraegeVon(kollege.id);
   for (const zugang of [firmaA.mitarbeiter, firmaB.buero]) {
     const supabase = await schnittstelleAls(zugang);
-    for (const schritt of ["fertig_hier", "arbeitstag_beenden"] as const) {
+    for (const schritt of ["fertig_hier", "pause_machen", "arbeitstag_beenden"] as const) {
       const { error } = await supabase.rpc(schritt, { wer: kollege.id });
       expect(error, `${zugang.name}: ${schritt}`).not.toBeNull();
     }
@@ -329,33 +330,219 @@ test("Die Schritte gibt es für sich selbst, als Vorarbeiter und Büro für Koll
 
   // Ohne Anmeldung gibt es keinen der Schritte.
   const ohneAnmeldung = oeffentlicherZugang();
-  for (const schritt of ["fertig_hier", "arbeitstag_beenden"] as const) {
+  for (const schritt of ["fertig_hier", "pause_machen", "arbeitstag_beenden"] as const) {
     const { error } = await ohneAnmeldung.rpc(schritt, { wer: kollege.id });
     expect(error, schritt).not.toBeNull();
   }
   expect((await starten(ohneAnmeldung, kollege.id, objekt)).error).not.toBeNull();
 });
 
-test("Eine Mini-Fahrt nach „Fahrt starten“ setzt keinen Vermerk auf einen älteren Eintrag", async () => {
+// Startet live eine Fahrt für wer, wie „Fahrt starten“ in der App.
+function fahrtStarten(supabase: SupabaseClient, firmaId: string, wer: string) {
+  return supabase
+    .from("zeiteintrag")
+    .insert({ firma_id: firmaId, mitarbeiter_id: wer, art: "fahrt" })
+    .select("id")
+    .single<{ id: string }>();
+}
+
+test("Ohne offenen Arbeitstag lehnt die Datenbank „Fahrt starten“ ab, als Nachtrag nicht", async () => {
+  const { firmaA } = testdaten();
+  const dienst = dienstZugang()!;
+  const objekt = await auswahl(firmaA.id);
+  // Ein Mitarbeiter, dessen letzter Eintrag vor minuten Minuten endete.
+  async function zuletztVor(minuten: number, arbeitstag_endet_hier = false) {
+    const zugang = await legeEigenenZugangAn(firmaA.id);
+    const id = await legeZeiteintragAn(dienst, {
+      firmaId: firmaA.id,
+      mitarbeiterId: zugang.id,
+      ...objekt,
+      beginn: vorMinuten(minuten + 60),
+      ende: vorMinuten(minuten),
+    });
+    if (arbeitstag_endet_hier) {
+      await dienst.from("zeiteintrag").update({ arbeitstag_endet_hier }).eq("id", id);
+    }
+    return { zugang, supabase: await schnittstelleAls(zugang) };
+  }
+
+  // Noch nichts erfasst: Der Arbeitstag beginnt nie mit einer Fahrt.
+  const neu = await legeEigenenZugangAn(firmaA.id);
+  const alsNeu = await schnittstelleAls(neu);
+  expect((await fahrtStarten(alsNeu, firmaA.id, neu.id)).error?.code).toBe("P0002");
+  expect(await eintraegeVon(neu.id)).toEqual([]);
+
+  // Nach „Arbeitstag beenden“ und nach mehr als 12 Stunden ohne
+  // Zeiteintrag (z. B. gestern, von vor der Umstellung ohne Vermerk) auch
+  // nicht. „Arbeitstag beenden“ setzt dann keinen Vermerk an einen
+  // älteren Tag.
+  for (const [was, { zugang, supabase }] of [
+    ["mit Vermerk", await zuletztVor(30, true)],
+    ["vor 12 Stunden und 5 Minuten", await zuletztVor(12 * 60 + 5)],
+    ["gestern", await zuletztVor(20 * 60)],
+  ] as const) {
+    const vorher = await eintraegeVon(zugang.id);
+    expect((await fahrtStarten(supabase, firmaA.id, zugang.id)).error?.code, was).toBe("P0002");
+    const beenden = await supabase.rpc("arbeitstag_beenden", { wer: zugang.id });
+    expect(beenden.error?.code, was).toBe("P0002");
+    expect(await eintraegeVon(zugang.id), was).toEqual(vorher);
+  }
+
+  // Knapp 12 Stunden nach dem letzten Eintrag ist der Arbeitstag noch offen.
+  const knapp = await zuletztVor(12 * 60 - 5);
+  const fahrt = await fahrtStarten(knapp.supabase, firmaA.id, knapp.zugang.id);
+  expect(fahrt.error).toBeNull();
+  expect((await eintraegeVon(knapp.zugang.id)).at(-1)).toMatchObject({
+    id: fahrt.data!.id,
+    ende: null,
+    nachtrag: false,
+  });
+
+  // Als Nachtrag geht eine Fahrt immer, auch am Tagesbeginn.
+  const nachtrag = await alsNeu.from("zeiteintrag").insert({
+    firma_id: firmaA.id,
+    mitarbeiter_id: neu.id,
+    art: "fahrt",
+    beginn: vorMinuten(90),
+    ende: vorMinuten(60),
+  });
+  expect(nachtrag.error).toBeNull();
+  expect(await eintraegeVon(neu.id)).toMatchObject([{ art: "fahrt", nachtrag: true }]);
+});
+
+test("„Pause“ beendet den laufenden Eintrag ohne Vermerk; danach gehen „Fahrt starten“ und „Arbeitstag beenden“", async () => {
+  const { firmaA } = testdaten();
+  const dienst = dienstZugang()!;
+  const ich = await legeEigenenZugangAn(firmaA.id);
+  const objekt = await auswahl(firmaA.id);
+  const supabase = await schnittstelleAls(ich);
+
+  // Läuft nichts, gibt es keine Pause.
+  expect((await supabase.rpc("pause_machen", { wer: ich.id })).error?.code).toBe("P0002");
+
+  // Pause am Objekt: Es endet, und nichts startet.
+  const start = await starten(supabase, ich.id, objekt);
+  expect((await supabase.rpc("pause_machen", { wer: ich.id })).error).toBeNull();
+  const [amObjekt] = await eintraegeVon(ich.id);
+  expect(amObjekt).toMatchObject({
+    id: start.data,
+    arbeitstag_endet_hier: false,
+    nachtrag: false,
+  });
+  erwarteJetzt(amObjekt.ende);
+  expect(await eintraegeVon(ich.id)).toHaveLength(1);
+  // Doppelter Druck: Es läuft nichts mehr.
+  expect((await supabase.rpc("pause_machen", { wer: ich.id })).error?.code).toBe("P0002");
+
+  // Nach der Pause startet eine Fahrt; Pause gleich danach entfernt sie
+  // als Mini-Fahrt.
+  expect((await fahrtStarten(supabase, firmaA.id, ich.id)).error).toBeNull();
+  expect((await supabase.rpc("pause_machen", { wer: ich.id })).error).toBeNull();
+  expect((await eintraegeVon(ich.id)).map((e) => e.id)).toEqual([amObjekt.id]);
+
+  // Eine Fahrt ab 2 Minuten bleibt bei der Pause gespeichert.
+  await dienst
+    .from("zeiteintrag")
+    .update({ beginn: vorMinuten(90), ende: vorMinuten(30) })
+    .eq("id", amObjekt.id);
+  const fahrt = await fahrtStarten(supabase, firmaA.id, ich.id);
+  expect(fahrt.error).toBeNull();
+  await dienst
+    .from("zeiteintrag")
+    .update({ beginn: vorMinuten(10) })
+    .eq("id", fahrt.data!.id);
+  expect((await supabase.rpc("pause_machen", { wer: ich.id })).error).toBeNull();
+  const nachPause = await eintraegeVon(ich.id);
+  expect(nachPause).toMatchObject([
+    { id: amObjekt.id, arbeitstag_endet_hier: false },
+    { id: fahrt.data!.id, art: "fahrt", arbeitstag_endet_hier: false, nachtrag: false },
+  ]);
+  erwarteJetzt(nachPause[1].ende);
+
+  // „Arbeitstag beenden“ nach der Pause: Der Vermerk kommt an den zuletzt
+  // beendeten Eintrag, ohne Beginn oder Ende zu ändern.
+  expect((await supabase.rpc("arbeitstag_beenden", { wer: ich.id })).error).toBeNull();
+  expect(await eintraegeVon(ich.id)).toEqual([
+    nachPause[0],
+    { ...nachPause[1], arbeitstag_endet_hier: true },
+  ]);
+
+  // Danach ist der Arbeitstag beendet: kein zweites Beenden, keine Fahrt.
+  expect((await supabase.rpc("arbeitstag_beenden", { wer: ich.id })).error?.code).toBe("P0002");
+  expect((await fahrtStarten(supabase, firmaA.id, ich.id)).error?.code).toBe("P0002");
+  expect(await eintraegeVon(ich.id)).toHaveLength(2);
+});
+
+test("Eine Mini-Fahrt nach einer Pause: „Arbeitstag beenden“ setzt den Vermerk an den Eintrag vor der Pause", async () => {
   const { firmaA } = testdaten();
   const ich = await legeEigenenZugangAn(firmaA.id);
   const objekt = await auswahl(firmaA.id);
   const supabase = await schnittstelleAls(ich);
-  // Gestern, ohne Vermerk (z. B. von vor der Umstellung).
-  const gestern = await legeZeiteintragAn(dienstZugang()!, {
+  // Bis vor einer Stunde gearbeitet, dann Pause.
+  const vorDerPause = await legeZeiteintragAn(dienstZugang()!, {
     firmaId: firmaA.id,
     mitarbeiterId: ich.id,
     ...objekt,
-    beginn: vorMinuten(26 * 60),
-    ende: vorMinuten(20 * 60),
+    beginn: vorMinuten(180),
+    ende: vorMinuten(60),
   });
 
-  const fahrt = await supabase
-    .from("zeiteintrag")
-    .insert({ firma_id: firmaA.id, mitarbeiter_id: ich.id, art: "fahrt" });
-  expect(fahrt.error).toBeNull();
+  expect((await fahrtStarten(supabase, firmaA.id, ich.id)).error).toBeNull();
   expect((await supabase.rpc("arbeitstag_beenden", { wer: ich.id })).error).toBeNull();
-
-  expect(await eintraegeVon(ich.id)).toMatchObject([{ id: gestern, arbeitstag_endet_hier: false }]);
+  expect(await eintraegeVon(ich.id)).toMatchObject([
+    { id: vorDerPause, arbeitstag_endet_hier: true, nachtrag: false },
+  ]);
   expect(await eintraegeVon(ich.id)).toHaveLength(1);
+});
+
+test("Pause, „Fahrt starten“ und Beenden nach der Pause gibt es als Vorarbeiter und Büro für Kollegen, nicht für andere", async () => {
+  const { firmaA, firmaB } = testdaten();
+  const kollege = await legeEigenenZugangAn(firmaA.id);
+  const objekt = await auswahl(firmaA.id);
+  const vorarbeiter = await schnittstelleAls(firmaA.vorarbeiter);
+  const buero = await schnittstelleAls(firmaA.buero);
+  await legeZeiteintragAn(dienstZugang()!, {
+    firmaId: firmaA.id,
+    mitarbeiterId: kollege.id,
+    ...objekt,
+    beginn: vorMinuten(30),
+    ende: null,
+  });
+
+  // Der Vorarbeiter macht für den Kollegen Pause.
+  expect((await vorarbeiter.rpc("pause_machen", { wer: kollege.id })).error).toBeNull();
+  const nachPause = await eintraegeVon(kollege.id);
+
+  // Ein normaler Mitarbeiter und das Büro einer anderen Firma können nach
+  // der Pause weder eine Fahrt starten noch den Arbeitstag beenden.
+  for (const zugang of [firmaA.mitarbeiter, firmaB.buero]) {
+    const supabase = await schnittstelleAls(zugang);
+    for (const firmaId of [firmaA.id, firmaB.id]) {
+      const fahrt = await fahrtStarten(supabase, firmaId, kollege.id);
+      expect(fahrt.error, zugang.name).not.toBeNull();
+    }
+    const beenden = await supabase.rpc("arbeitstag_beenden", { wer: kollege.id });
+    expect(beenden.error, zugang.name).not.toBeNull();
+  }
+  const ohneAnmeldung = oeffentlicherZugang();
+  expect((await ohneAnmeldung.rpc("pause_machen", { wer: kollege.id })).error).not.toBeNull();
+  expect(await eintraegeVon(kollege.id)).toEqual(nachPause);
+
+  // Der Vorarbeiter startet die Fahrt, das Büro beendet den Arbeitstag.
+  const fahrt = await fahrtStarten(vorarbeiter, firmaA.id, kollege.id);
+  expect(fahrt.error).toBeNull();
+  expect((await eintraegeVon(kollege.id)).at(-1)).toMatchObject({
+    id: fahrt.data!.id,
+    angelegt_von: firmaA.vorarbeiter.id,
+  });
+  expect((await buero.rpc("arbeitstag_beenden", { wer: kollege.id })).error).toBeNull();
+  // Die Fahrt war kürzer als 2 Minuten; der Vermerk kommt ans Objekt.
+  expect(await eintraegeVon(kollege.id)).toEqual([
+    { ...nachPause[0], arbeitstag_endet_hier: true },
+  ]);
+
+  // Danach auch für Vorarbeiter und Büro keine Fahrt mehr.
+  for (const supabase of [vorarbeiter, buero]) {
+    expect((await fahrtStarten(supabase, firmaA.id, kollege.id)).error?.code).toBe("P0002");
+  }
 });

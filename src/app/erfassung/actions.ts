@@ -25,7 +25,8 @@ const FREMDSCHLUESSEL_VERLETZT = "23503";
 const UEBERSCHNEIDUNG = "23P01";
 // Für einen Schritt der Live-Erfassung läuft nichts Passendes (mehr), oder
 // der laufende Eintrag ist unvollständig (Migration zu Fahrt und
-// Arbeitstag).
+// Arbeitstag). Beim Start einer Fahrt: Es ist kein Arbeitstag offen
+// (Migration zu Pause und Fahrt im Arbeitstag).
 const LAEUFT_NICHTS = "P0002";
 
 // Jede Aktion ist auch ohne die Oberfläche per Direktaufruf erreichbar.
@@ -85,6 +86,9 @@ export async function zeiteintragStarten(
   return OK();
 }
 
+// Nur in einem offenen Arbeitstag, also nach einer Pause; sonst lehnt die
+// Datenbank ab (z. B. wenn inzwischen auf einem anderen Gerät der
+// Arbeitstag beendet wurde).
 export async function fahrtStarten(fuer: string): Promise<Rueckmeldung> {
   const erfasser = await alsErfasser(fuer);
   if (erfasser.fehler) return erfasser.fehler;
@@ -93,13 +97,17 @@ export async function fahrtStarten(fuer: string): Promise<Rueckmeldung> {
   const { error } = await supabase
     .from("zeiteintrag")
     .insert({ firma_id: ich.firma_id, mitarbeiter_id: fuer, art: "fahrt" });
+  if (error?.code === LAEUFT_NICHTS) {
+    refresh();
+    return FEHLER(texte.erfassung.fehlerKeinArbeitstag);
+  }
   if (error) return fehlerBeimStart(error);
 
   refresh();
   return OK();
 }
 
-// „Fertig hier“ und „Arbeitstag beenden“: Die Datenbank beendet den
+// „Fertig hier“, „Pause“ und „Arbeitstag beenden“: Die Datenbank beendet den
 // laufenden Eintrag mit ihrer eigenen Uhr, aber nie einen unvollständigen
 // (die Seite wurde vor Ablauf der 12 Stunden geladen und erst danach
 // gedrückt). Dann meldet sie LAEUFT_NICHTS, ebenso wenn schon woanders
@@ -107,7 +115,7 @@ export async function fahrtStarten(fuer: string): Promise<Rueckmeldung> {
 // Druck); die neu geladene Seite zeigt, was gilt.
 async function schrittAusfuehren(
   fuer: string,
-  schritt: "fertig_hier" | "arbeitstag_beenden",
+  schritt: "fertig_hier" | "pause_machen" | "arbeitstag_beenden",
   meldungen: { laeuftNichts: string; fehler: string },
 ): Promise<Rueckmeldung> {
   const erfasser = await alsErfasser(fuer);
@@ -134,11 +142,21 @@ export async function fertigHier(fuer: string): Promise<Rueckmeldung> {
   });
 }
 
+// Beendet den laufenden Eintrag; danach startet nichts. Eine Fahrt unter
+// 2 Minuten wird nicht gespeichert.
+export async function pauseMachen(fuer: string): Promise<Rueckmeldung> {
+  return schrittAusfuehren(fuer, "pause_machen", {
+    laeuftNichts: texte.erfassung.fehlerLaeuftNichtsOderUnvollstaendig,
+    fehler: texte.erfassung.fehlerPause,
+  });
+}
+
 // Beendet den laufenden Eintrag mit dem Vermerk „Arbeitstag endet hier“;
-// danach startet nichts. Eine Fahrt bleibt als Rückfahrt gespeichert.
+// danach startet nichts. Eine Fahrt bleibt als Rückfahrt gespeichert. Nach
+// einer Pause kommt der Vermerk an den zuletzt beendeten Eintrag.
 export async function arbeitstagBeenden(fuer: string): Promise<Rueckmeldung> {
   return schrittAusfuehren(fuer, "arbeitstag_beenden", {
-    laeuftNichts: texte.erfassung.fehlerLaeuftNichtsOderUnvollstaendig,
+    laeuftNichts: texte.erfassung.fehlerArbeitstagSchonBeendet,
     fehler: texte.erfassung.fehlerArbeitstagBeenden,
   });
 }

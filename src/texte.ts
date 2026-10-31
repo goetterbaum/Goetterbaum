@@ -307,6 +307,8 @@ export const texte = {
     fahrt: "Fahrt",
     fertigHier: "Fertig hier",
     fertigHierLaeuft: "Wird gespeichert …",
+    pause: "Pause",
+    pauseLaeuft: "Wird gespeichert …",
     arbeitstagBeenden: "Arbeitstag beenden",
     arbeitstagBeendenRueckfrage: "Arbeitstag wirklich beenden?",
     rueckfahrtWirdGespeichert: "Die Fahrt wird als Rückfahrt gespeichert.",
@@ -341,6 +343,10 @@ export const texte = {
       "Es läuft schon ein Zeiteintrag. Beende ihn mit „Fertig hier“ oder „Arbeitstag beenden“, bevor du einen neuen startest.",
     fehlerLaeuftNichtsOderUnvollstaendig:
       "Es läuft kein Zeiteintrag mehr, oder er läuft schon so lange, dass du das richtige Ende nachtragen musst.",
+    fehlerArbeitstagSchonBeendet:
+      "Der Arbeitstag ist schon beendet, oder ein Zeiteintrag läuft schon so lange, dass du das richtige Ende nachtragen musst.",
+    fehlerKeinArbeitstag:
+      "Eine Fahrt startet nur nach einer Pause im laufenden Arbeitstag. Den Arbeitstag beginnst du mit einem Start an einem Objekt.",
     fehlerLaeuftKeinObjekt:
       "Es läuft kein Objekt mehr, oder es läuft schon so lange, dass du das richtige Ende nachtragen musst.",
     fehlerNichtZurAuswahl:
@@ -350,6 +356,8 @@ export const texte = {
       "Der Start wurde nicht gespeichert. Bitte versuche es noch einmal oder trage die Zeit später als Nachtrag ein.",
     fehlerFertigHier:
       "„Fertig hier“ wurde nicht gespeichert. Bitte versuche es noch einmal oder trage die Zeit später als Nachtrag ein.",
+    fehlerPause:
+      "Die Pause wurde nicht gespeichert. Bitte versuche es noch einmal oder trage das Ende später als Nachtrag ein.",
     fehlerArbeitstagBeenden:
       "Das Beenden wurde nicht gespeichert. Bitte versuche es noch einmal oder trage das Ende später als Nachtrag ein.",
     ohneNetzStart:
@@ -359,6 +367,8 @@ export const texte = {
       `Dieser Zeiteintrag läuft seit mehr als ${stunden} Stunden. Wurde das Beenden vergessen? Bitte trage das richtige Ende ein.`,
     ohneNetzFertigHier:
       "Kein Internet: „Fertig hier“ wurde nicht gespeichert. Bitte trage das Ende später als Nachtrag ein.",
+    ohneNetzPause:
+      "Kein Internet: Die Pause wurde nicht gespeichert. Bitte trage das Ende später als Nachtrag ein.",
     ohneNetzArbeitstagBeenden:
       "Kein Internet: Das Beenden wurde nicht gespeichert. Bitte trage das Ende später als Nachtrag ein.",
   },
