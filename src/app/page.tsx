@@ -72,6 +72,9 @@ async function Begruessung() {
             <Link href="/auswertungen/ist-zeit">{texte.start.istZeit}</Link>
           </p>
           <p>
+            <Link href="/kostenanalyse">{texte.start.kostenanalyse}</Link>
+          </p>
+          <p>
             <Link href="/einstellungen">{texte.start.einstellungen}</Link>
           </p>
         </>

@@ -18,7 +18,7 @@ Regeln für das Review. Was ESLint, TypeScript oder Prettier prüfen, steht hier
 ## Zeit und Geld
 
 - Zeiten sind Zeitpunkte mit Zeitzone. Tage und Uhrzeiten gelten in Berlin und laufen über `src/lib/berliner-zeit.ts`.
-- Beträge sind ganze Cent. Geld rechnet nur der Rechenbaustein (`src/lib/rechnungsvorbereitung.ts`).
+- Beträge sind ganze Cent. Einnahmen rechnet nur der Rechenbaustein der Rechnungsvorbereitung (`src/lib/rechnungsvorbereitung.ts`), Kosten und Deckungsbeitrag nur der Rechenbaustein der Kostenanalyse (`src/lib/kostenanalyse.ts`), der für die Einnahmen den ersten mitnutzt.
 
 ## Tests
 

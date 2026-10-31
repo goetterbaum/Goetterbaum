@@ -20,12 +20,14 @@ function useBedienbar() {
 // Jahr mit Pfeilen und die Buttons Januar bis Dezember in einem Formular
 // mit den Feldern "von" und "bis". Ein Monat trägt seinen ersten und
 // letzten Tag dort ein und schickt das Formular gleich ab, die übrigen
-// Angaben darin bleiben also erhalten.
+// Angaben darin bleiben also erhalten. Auf Wunsch gibt es dazu den Button
+// „Ganzes Jahr“, der ebenso den 1. Januar und den 31. Dezember einträgt.
 export function Monatsauswahl({
   gewaehlt,
   jahr: angezeigtesJahr,
   aktuellerMonat,
   abschickenNurMit,
+  ganzesJahr,
 }: {
   // Der Monat, den von und bis gerade umfassen, sonst null.
   gewaehlt: Monat | null;
@@ -36,28 +38,42 @@ export function Monatsauswahl({
   // Abgeschickt wird nur, wenn das Feld dieses Namens ausgefüllt ist;
   // sonst trägt ein Monat nur die Daten ein.
   abschickenNurMit?: string;
+  // Zeigt den Button „Ganzes Jahr“; gewaehlt, wenn von und bis gerade das
+  // Jahr `jahr` umfassen.
+  ganzesJahr?: { gewaehlt: boolean };
 }) {
   const t = texte.monatsauswahl;
   const bedienbar = useBedienbar();
   const [jahr, setJahr] = useState(angezeigtesJahr);
   const [monat, setMonat] = useState(gewaehlt);
+  const jahrGewaehlt = ganzesJahr?.gewaehlt ? angezeigtesJahr : null;
+  const [gewaehltesJahr, setGewaehltesJahr] = useState(jahrGewaehlt);
   // Kommt die Seite mit neuer Auswahl, gilt die neue.
-  const [bisher, setBisher] = useState({ gewaehlt, angezeigtesJahr });
-  if (bisher.gewaehlt !== gewaehlt || bisher.angezeigtesJahr !== angezeigtesJahr) {
-    setBisher({ gewaehlt, angezeigtesJahr });
+  const [bisher, setBisher] = useState({ gewaehlt, angezeigtesJahr, jahrGewaehlt });
+  if (
+    bisher.gewaehlt !== gewaehlt ||
+    bisher.angezeigtesJahr !== angezeigtesJahr ||
+    bisher.jahrGewaehlt !== jahrGewaehlt
+  ) {
+    setBisher({ gewaehlt, angezeigtesJahr, jahrGewaehlt });
     setMonat(gewaehlt);
+    setGewaehltesJahr(jahrGewaehlt);
     setJahr(angezeigtesJahr);
   }
   const aktuellesJahr = Number(aktuellerMonat.slice(0, 4));
 
-  function waehle(knopf: HTMLButtonElement, gewaehlterMonat: Monat) {
+  function waehle(knopf: HTMLButtonElement, gewaehlterMonat: Monat | "ganzes-jahr") {
     const formular = knopf.form;
     if (!formular) return;
-    const { von, bis } = monatsZeitraum(gewaehlterMonat);
+    const ganzes = gewaehlterMonat === "ganzes-jahr";
+    const { von, bis } = ganzes
+      ? { von: `${jahr}-01-01`, bis: `${jahr}-12-31` }
+      : monatsZeitraum(gewaehlterMonat);
     const feld = (name: string) => formular.elements.namedItem(name) as HTMLInputElement | null;
     feld("von")!.value = von;
     feld("bis")!.value = bis;
-    setMonat(gewaehlterMonat);
+    setMonat(ganzes ? null : gewaehlterMonat);
+    setGewaehltesJahr(ganzes ? jahr : null);
     if (!abschickenNurMit || feld(abschickenNurMit)?.value) formular.requestSubmit();
   }
 
@@ -98,6 +114,16 @@ export function Monatsauswahl({
             </button>
           );
         })}
+        {ganzesJahr && (
+          <button
+            type="button"
+            aria-pressed={gewaehltesJahr === jahr}
+            disabled={!bedienbar}
+            onClick={(e) => waehle(e.currentTarget, "ganzes-jahr")}
+          >
+            {t.ganzesJahr}
+          </button>
+        )}
       </div>
     </div>
   );
