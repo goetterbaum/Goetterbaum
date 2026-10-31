@@ -6,6 +6,7 @@ import type {
   Rundungsregel,
   ZusatzauftragAbrechnungsart,
 } from "@/lib/abrechnung";
+import type { Herkunft as ArbeitgeberkostenHerkunft } from "@/lib/arbeitgeberkosten/regeln";
 import type { Rolle } from "@/lib/rollen";
 import type { Sparte } from "@/lib/sparte";
 import type { Herkunft } from "@/lib/stundensaetze/regeln";
@@ -747,6 +748,42 @@ export const texte = {
     fehlerRundungsregel: "Bitte wähle eine Rundungsregel.",
     rundungsregelHinweis:
       "Gilt für die Stundenabrechnung aller Kunden, für die keine eigene Rundungsregel festgelegt ist. Gerundet wird die Summe je Objekt, Tätigkeit und Kalendertag.",
+  },
+  arbeitgeberkosten: {
+    titel: "Arbeitgeberkosten je Stunde",
+    hinweisStandard:
+      "Was ein Mitarbeiter die Firma je bezahlter Stunde insgesamt kostet, einschließlich Lohn, Sozialabgaben, Urlaub und Krankheit. Gilt für alle Mitarbeiter ohne eigenen Wert. Die Mitarbeiter sehen diese Werte nicht.",
+    hinweisMitarbeiter:
+      "Ein eigener Wert geht vor dem Standard der Firma. Ohne eigenen Wert gilt der Standard. Der Mitarbeiter sieht diese Werte nicht.",
+    keine: "Noch kein Wert eingetragen.",
+    spalteGueltigAb: "Gültig ab",
+    spalteBetrag: "Betrag je Stunde",
+    gueltigAb: "Gültig ab",
+    betrag: "Betrag je Stunde in Euro",
+    gueltigAbAm: (datum: string) => `Gültig ab für den Wert vom ${datum}`,
+    betragAm: (datum: string) => `Betrag je Stunde in Euro für den Wert vom ${datum}`,
+    hinzufuegenTitel: "Wert hinzufügen",
+    hinzufuegen: "Hinzufügen",
+    hinzufuegenLaeuft: "Wird hinzugefügt …",
+    hinzugefuegt: "Wert hinzugefügt.",
+    aendern: "Ändern",
+    aendernLaeuft: "Wird geändert …",
+    geaendert: "Wert geändert.",
+    loeschen: "Löschen",
+    loeschenLaeuft: "Wird gelöscht …",
+    loeschenRueckfrage: (datum: string) => `Den Wert ab ${datum} wirklich löschen?`,
+    loeschenBestaetigen: "Ja, löschen",
+    abbrechen: "Abbrechen",
+    herkunft: {
+      standard: "Standard der Firma",
+      "eigener-wert": "eigener Wert",
+    } satisfies Record<ArbeitgeberkostenHerkunft, string>,
+    heute: (betrag: string, herkunft: string) => `Heute gilt: ${betrag} (${herkunft})`,
+    heuteKeiner: "Heute gilt weder ein eigener Wert noch ein Standard der Firma.",
+    fehlerGueltigAb: "Bitte gib an, ab welchem Tag der Betrag gilt.",
+    fehlerBetrag: "Die Arbeitgeberkosten sind kein gültiger Betrag über 0 €. Beispiel: 27,50",
+    fehlerDoppelt: "Für diesen Tag gibt es schon einen Wert. Ändere bitte diesen.",
+    fehlerNichtGefunden: "Diesen Wert gibt es nicht mehr. Lade die Seite neu.",
   },
   rundungsregelDerFirma: (regel: string) => `Standard der Firma (${regel})`,
   abrechnungszeitraeume: {

@@ -118,3 +118,17 @@ _Avoid_: Rechnungsentwurf, Abrechnungsliste
 **Abrechnung**:
 Eine als abgerechnet markierte Rechnungsvorbereitung: Kunde, Zeitraum (bei einem einzeln abgerechneten Zusatzauftrag stattdessen dieser), Positionen und Summe, wann und von wem, dazu die umfassten Zeiteinträge, Pauschal-Monate und Zusatzaufträge mit Festbetrag. Diese sind danach für alle gesperrt und erscheinen in keiner weiteren Rechnungsvorbereitung. Das Büro kann eine Abrechnung nach Rückfrage zurücknehmen; sie bleibt dann als zurückgenommen stehen, und ihr Inhalt ist wieder abrechenbar.
 _Avoid_: Rechnung (die schreibt das Büro in DATEV), Abschluss
+
+## Kosten
+
+**Arbeitgeberkosten**:
+Was ein Mitarbeiter die Firma je bezahlter Stunde insgesamt kostet, einschließlich Lohn, Sozialabgaben, Urlaub und Krankheit. Die Firma legt einen Standard fest, der je Mitarbeiter abweichen kann. Beide gelten ab einem Datum.
+_Avoid_: Lohnkosten, Stundenlohn, Personalkostensatz
+
+**Deckungsbeitrag**:
+Was von den Einnahmen eines Objekts oder Zusatzauftrags nach Abzug der Arbeitgeberkosten für Arbeits- und Fahrzeit übrig bleibt. Material-, Fahrzeug- und Verwaltungskosten sind nicht abgezogen.
+_Avoid_: Gewinn, Marge, Überschuss
+
+**Kostenanalyse**:
+Die Auswertung des Deckungsbeitrags je Objekt für einen Zeitraum und je Mitarbeiter für einen Arbeitstag. Sie ist unabhängig von der Rechnungsvorbereitung.
+_Avoid_: Kostenrechnung, Rentabilität
