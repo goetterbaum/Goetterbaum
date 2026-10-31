@@ -57,8 +57,11 @@ test("Büro pflegt den Standard der Arbeitgeberkosten in den Einstellungen mit V
     await expect(page.getByRole("heading", { name: "Arbeitgeberkosten je Stunde" })).toBeVisible();
     await expect(page.getByText("Noch kein Wert eingetragen.")).toBeVisible();
 
-    // Kein Betrag über 0 €: abgelehnt, nichts gespeichert.
+    // Kein Betrag über 0 €: abgelehnt, nichts gespeichert. Neu geladen,
+    // damit keine Meldung vom vorigen Versuch stehen bleibt.
     for (const betrag of ["-26,00", "0", "26.00", "abc"]) {
+      await page.reload();
+      await expect(fehler(page)).toHaveCount(0);
       await hinzufuegen(page, "2026-01-01", betrag);
       await expect(fehler(page)).toHaveText(
         "Die Arbeitgeberkosten sind kein gültiger Betrag über 0 €. Beispiel: 27,50",

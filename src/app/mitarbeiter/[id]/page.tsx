@@ -71,7 +71,7 @@ async function Bearbeiten({ id: idVersprechen }: { id: Promise<string> }) {
         />
       )}
 
-      <Arbeitgeberkosten mitarbeiterId={mitarbeiter.id} />
+      <ArbeitgeberkostenAbschnitt mitarbeiterId={mitarbeiter.id} />
 
       <p>{texte.mitarbeiter.deaktiviertHinweis}</p>
       {/* Neuer Knopf nach jedem Wechsel, damit keine alte Meldung stehen
@@ -89,7 +89,7 @@ async function Bearbeiten({ id: idVersprechen }: { id: Promise<string> }) {
 }
 
 // Der eigene Wert der Arbeitgeberkosten mit Verlauf und was heute gilt.
-async function Arbeitgeberkosten({ mitarbeiterId }: { mitarbeiterId: string }) {
+async function ArbeitgeberkostenAbschnitt({ mitarbeiterId }: { mitarbeiterId: string }) {
   const supabase = await createClient();
   const ziel = { mitarbeiterId };
   const [eigene, standard] = await Promise.all([

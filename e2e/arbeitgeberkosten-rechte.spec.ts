@@ -147,7 +147,7 @@ test("Das Büro kann Arbeitgeberkosten einer anderen Firma weder sehen noch anle
       gueltig_ab: "2026-06-01",
       kosten_je_stunde_cent: 1,
     });
-    expect(fremderMitarbeiter.error).not.toBeNull();
+    expect(fremderMitarbeiter.error?.code).toBe("23503");
 
     expect(await gespeicherteWerte(firma.id)).toEqual(vorher);
     const { data: beiFirmaB } = await dienstZugang()!
