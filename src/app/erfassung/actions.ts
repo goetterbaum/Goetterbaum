@@ -225,7 +225,7 @@ export async function zeiteintragAendern(
 // als 12 Stunden), für sich selbst oder als Vorarbeiter bzw. Büro für
 // einen anderen. Die Datenbank übernimmt das Ende nur bei einem
 // unvollständigen Eintrag und markiert ihn dann als Nachtrag; bei jedem
-// anderen laufenden setzt sie ihre eigene Uhr wie beim Stopp.
+// anderen laufenden setzt sie ihre eigene Uhr wie bei „Fertig hier“.
 export async function endeNachtragen(
   id: string,
   _vorher: Rueckmeldung,
@@ -262,7 +262,7 @@ export async function endeNachtragen(
   // Inzwischen woanders beendet.
   if (data.length === 0) return FEHLER(texte.nachtrag.schonBeendet);
   // Nach der Uhr der Datenbank lief er noch keine 12 Stunden (die Uhren
-  // weichen knapp an der Grenze ab): Sie hat ihn wie bei einem Stopp mit
+  // weichen knapp an der Grenze ab): Sie hat ihn wie bei „Fertig hier“ mit
   // ihrer eigenen Uhr beendet.
   if (!data[0].nachtrag) return FEHLER(texte.nachtrag.mitJetztBeendet(UNVOLLSTAENDIG_NACH_STUNDEN));
   return OK(texte.nachtrag.gespeichert);

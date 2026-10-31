@@ -335,3 +335,27 @@ test("Die Schritte gibt es für sich selbst, als Vorarbeiter und Büro für Koll
   }
   expect((await starten(ohneAnmeldung, kollege.id, objekt)).error).not.toBeNull();
 });
+
+test("Eine Mini-Fahrt nach „Fahrt starten“ setzt keinen Vermerk auf einen älteren Eintrag", async () => {
+  const { firmaA } = testdaten();
+  const ich = await legeEigenenZugangAn(firmaA.id);
+  const objekt = await auswahl(firmaA.id);
+  const supabase = await schnittstelleAls(ich);
+  // Gestern, ohne Vermerk (z. B. von vor der Umstellung).
+  const gestern = await legeZeiteintragAn(dienstZugang()!, {
+    firmaId: firmaA.id,
+    mitarbeiterId: ich.id,
+    ...objekt,
+    beginn: vorMinuten(26 * 60),
+    ende: vorMinuten(20 * 60),
+  });
+
+  const fahrt = await supabase
+    .from("zeiteintrag")
+    .insert({ firma_id: firmaA.id, mitarbeiter_id: ich.id, art: "fahrt" });
+  expect(fahrt.error).toBeNull();
+  expect((await supabase.rpc("arbeitstag_beenden", { wer: ich.id })).error).toBeNull();
+
+  expect(await eintraegeVon(ich.id)).toMatchObject([{ id: gestern, arbeitstag_endet_hier: false }]);
+  expect(await eintraegeVon(ich.id)).toHaveLength(1);
+});

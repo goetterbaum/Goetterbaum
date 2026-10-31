@@ -123,6 +123,7 @@ as $$
 begin
   delete from public.zeiteintrag z
   where z.id = eintrag
+    and z.firma_id = privat.meine_firma_id()
     and z.art = 'fahrt'
     and z.ende = now()
     and z.beginn > now() - interval '2 minutes';
@@ -130,10 +131,12 @@ begin
 end
 $$;
 
--- Setzt den Vermerk an einem beendeten Eintrag eines Mitarbeiters, für den
--- der angemeldete Nutzer erfassen darf. Ein abgerechneter Eintrag ändert
--- sich nicht mehr (#16); er bleibt dann ohne Vermerk, statt dass das
--- Beenden des Arbeitstags scheitert.
+-- Setzt den Vermerk an einem beendeten Eintrag, den der angemeldete Nutzer
+-- auch über die Zugriffsregeln ändern dürfte (eigene und, als Vorarbeiter,
+-- die aktiver Mitarbeiter nur, solange sie nicht freigegeben sind; das Büro
+-- alle der Firma). Ein abgerechneter Eintrag ändert sich nicht mehr (#16).
+-- Sonst bleibt er ohne Vermerk, statt dass das Beenden des Arbeitstags
+-- scheitert.
 create function privat.arbeitstag_endet_hier_setzen(eintrag uuid)
 returns void
 language sql
@@ -147,8 +150,17 @@ as $$
     and z.abgerechnet_in is null
     and z.firma_id = privat.meine_firma_id()
     and (
-      z.mitarbeiter_id = privat.meine_mitarbeiter_id()
-      or privat.meine_rolle() in ('vorarbeiter', 'buero')
+      privat.meine_rolle() = 'buero'
+      or (
+        z.freigegeben_am is null
+        and (
+          z.mitarbeiter_id = privat.meine_mitarbeiter_id()
+          or (
+            privat.meine_rolle() = 'vorarbeiter'
+            and privat.aktiver_mitarbeiter_meiner_firma(z.mitarbeiter_id)
+          )
+        )
+      )
     )
 $$;
 
@@ -233,7 +245,10 @@ $$;
 
 -- „Arbeitstag beenden“: den laufenden Eintrag beenden und den Vermerk
 -- setzen. Eine Fahrt bleibt als Rückfahrt gespeichert, außer sie ist eine
--- Mini-Fahrt; dann kommt der Vermerk auf den Eintrag davor.
+-- Mini-Fahrt; dann kommt der Vermerk auf den Eintrag davor, aber nur, wenn
+-- er genau beim Beginn der Fahrt endete (nach „Fertig hier“). Eine
+-- Mini-Fahrt nach „Fahrt starten“ hat keinen Eintrag davor im selben
+-- Arbeitstag; der Vermerk landet dann nicht auf einem älteren Tag.
 create function public.arbeitstag_beenden(wer uuid)
 returns void
 language plpgsql
@@ -258,10 +273,7 @@ begin
     select z.id into davor_id
     from public.zeiteintrag z
     where z.mitarbeiter_id = wer
-      and z.ende is not null
-      and z.beginn < beendet.beginn
-    order by z.beginn desc
-    limit 1;
+      and z.ende = beendet.beginn;
     if found then
       perform privat.arbeitstag_endet_hier_setzen(davor_id);
     end if;
