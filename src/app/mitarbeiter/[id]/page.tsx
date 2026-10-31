@@ -1,5 +1,9 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { geltendeArbeitgeberkosten } from "@/lib/arbeitgeberkosten/regeln";
+import { alsVerlauf, ladeArbeitgeberkosten } from "@/lib/arbeitgeberkosten/verwaltung";
+import { heuteInBerlin } from "@/lib/berliner-zeit";
+import { euroAlsText } from "@/lib/geld";
 import { zugangsStatus } from "@/lib/mitarbeiter/regeln";
 import { ladeMitarbeiter } from "@/lib/mitarbeiter/verwaltung";
 import { createClient } from "@/lib/supabase/server";
@@ -7,6 +11,7 @@ import { texte } from "@/texte";
 import styles from "../../page.module.css";
 import { aktivSetzen, einladen, speichern } from "../actions";
 import { AktionsKnopf } from "@/app/aktions-knopf";
+import { ArbeitgeberkostenVerlauf } from "@/app/arbeitgeberkosten/verlauf";
 import { MitarbeiterFormular } from "../mitarbeiter-formular";
 import { NurFuerBuero } from "@/app/nur-fuer-buero";
 
@@ -66,6 +71,8 @@ async function Bearbeiten({ id: idVersprechen }: { id: Promise<string> }) {
         />
       )}
 
+      <Arbeitgeberkosten mitarbeiterId={mitarbeiter.id} />
+
       <p>{texte.mitarbeiter.deaktiviertHinweis}</p>
       {/* Neuer Knopf nach jedem Wechsel, damit keine alte Meldung stehen
           bleibt. */}
@@ -77,6 +84,35 @@ async function Bearbeiten({ id: idVersprechen }: { id: Promise<string> }) {
       />
 
       <ZurUebersicht />
+    </>
+  );
+}
+
+// Der eigene Wert der Arbeitgeberkosten mit Verlauf und was heute gilt.
+async function Arbeitgeberkosten({ mitarbeiterId }: { mitarbeiterId: string }) {
+  const supabase = await createClient();
+  const ziel = { mitarbeiterId };
+  const [eigene, standard] = await Promise.all([
+    ladeArbeitgeberkosten(supabase, ziel),
+    ladeArbeitgeberkosten(supabase, { mitarbeiterId: null }),
+  ]);
+  const t = texte.arbeitgeberkosten;
+  const heute = geltendeArbeitgeberkosten(
+    heuteInBerlin(),
+    alsVerlauf(eigene),
+    alsVerlauf(standard),
+  );
+
+  return (
+    <>
+      <h2>{t.titel}</h2>
+      <p>{t.hinweisMitarbeiter}</p>
+      <p>
+        {heute
+          ? t.heute(euroAlsText(heute.centJeStunde), t.herkunft[heute.herkunft])
+          : t.heuteKeiner}
+      </p>
+      <ArbeitgeberkostenVerlauf ziel={ziel} werte={eigene} />
     </>
   );
 }

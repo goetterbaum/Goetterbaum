@@ -1,5 +1,7 @@
 import { Suspense } from "react";
+import { ArbeitgeberkostenVerlauf } from "@/app/arbeitgeberkosten/verlauf";
 import { NurFuerBuero } from "@/app/nur-fuer-buero";
+import { ladeArbeitgeberkosten } from "@/lib/arbeitgeberkosten/verwaltung";
 import { ladeFirma } from "@/lib/firma/verwaltung";
 import { createClient } from "@/lib/supabase/server";
 import { texte } from "@/texte";
@@ -22,10 +24,18 @@ export default function Einstellungen() {
 }
 
 async function Formular({ firmaId }: { firmaId: string }) {
-  const firma = await ladeFirma(await createClient(), firmaId);
+  const supabase = await createClient();
+  const ziel = { mitarbeiterId: null };
+  const [firma, standard] = await Promise.all([
+    ladeFirma(supabase, firmaId),
+    ladeArbeitgeberkosten(supabase, ziel),
+  ]);
   return (
     <>
       <EinstellungenFormular rundungsregel={firma.rundungsregel} />
+      <h2>{texte.arbeitgeberkosten.titel}</h2>
+      <p>{texte.arbeitgeberkosten.hinweisStandard}</p>
+      <ArbeitgeberkostenVerlauf ziel={ziel} werte={standard} />
     </>
   );
 }
