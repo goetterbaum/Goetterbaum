@@ -5,25 +5,25 @@ import { createClient } from "@/lib/supabase/server";
 import {
   ANGEZEIGTE_TAGE,
   angelegtVon,
-  istUnvollstaendig,
   laeuftSeit,
   nachTagen,
   UNVOLLSTAENDIG_NACH_STUNDEN,
   wasUndWo,
   type MeinZeiteintrag,
 } from "@/lib/zeiterfassung/anzeige";
+import { knoepfe, zustandDerErfassung, type Knoepfe } from "@/lib/zeiterfassung/live-erfassung";
 import { ladeAuswahl, ladeZeiteintraegeVon } from "@/lib/zeiterfassung/verwaltung";
 import { texte } from "@/texte";
 import styles from "./erfassung.module.css";
 import { endeNachtragen } from "./actions";
+import { ArbeitstagBeendenKnopf, FertigHierKnopf } from "./laufend-knoepfe";
 import { StartFormular } from "./start-formular";
-import { StoppKnopf } from "./stopp-knopf";
 
-// Die Live-Erfassung eines Mitarbeiters: entweder der laufende Zeiteintrag
-// mit Stopp (ist er unvollständig, stattdessen mit dem Formular für das
-// richtige Ende) oder das Start-Formular, darunter seine Einträge der letzten
-// Tage. eigene: der angemeldete Nutzer erfasst für sich selbst, sonst als
-// Vorarbeiter oder Büro für einen anderen.
+// Die Live-Erfassung eines Mitarbeiters: der laufende Zeiteintrag mit den
+// Knöpfen, die sein Zustand erlaubt (siehe live-erfassung.ts), und das
+// Start-Formular, wenn nichts oder eine Fahrt läuft. Darunter seine
+// Einträge der letzten Tage. eigene: der angemeldete Nutzer erfasst für
+// sich selbst, sonst als Vorarbeiter oder Büro für einen anderen.
 export async function Erfassung({
   mitarbeiterId,
   eigene,
@@ -34,13 +34,23 @@ export async function Erfassung({
   const supabase = await createClient();
   const { eintraege, jetzt } = await ladeZeiteintraegeVon(supabase, mitarbeiterId);
   const laufender = eintraege.find((e) => e.ende === null);
-  // Die Auswahl braucht nur, wer gerade nichts laufen hat.
-  const auswahl = laufender ? null : await ladeAuswahl(supabase);
+  const erlaubt = knoepfe(zustandDerErfassung(laufender, jetzt));
+  // Die Auswahl braucht nur das Start-Formular.
+  const auswahl = erlaubt.startFormular ? await ladeAuswahl(supabase) : null;
 
   return (
     <section className={styles.erfassung}>
-      {laufender && <Laufend eintrag={laufender} mitarbeiterId={mitarbeiterId} jetzt={jetzt} />}
-      {auswahl && <StartFormular fuer={mitarbeiterId} {...auswahl} />}
+      {laufender && (
+        <Laufend
+          eintrag={laufender}
+          mitarbeiterId={mitarbeiterId}
+          jetzt={jetzt}
+          knoepfe={erlaubt}
+        />
+      )}
+      {auswahl && (
+        <StartFormular fuer={mitarbeiterId} fahrtStarten={erlaubt.fahrtStarten} {...auswahl} />
+      )}
       <Eintraege eintraege={eintraege} mitarbeiterId={mitarbeiterId} eigene={eigene} />
     </section>
   );
@@ -50,15 +60,18 @@ function Laufend({
   eintrag,
   mitarbeiterId,
   jetzt,
+  knoepfe,
 }: {
   eintrag: MeinZeiteintrag;
   mitarbeiterId: string;
   jetzt: number;
+  knoepfe: Knoepfe;
 }) {
   const anleger = angelegtVon(eintrag, mitarbeiterId);
-  // Ein Stopp würde hier "jetzt" als Ende speichern, also mehr als 12
-  // Stunden. Deshalb nur das Formular für das richtige Ende.
-  const unvollstaendig = istUnvollstaendig(eintrag, jetzt);
+  // Ist er unvollständig, würde jeder Knopf "jetzt" als Ende speichern,
+  // also mehr als 12 Stunden. Deshalb nur das Formular für das richtige
+  // Ende.
+  const unvollstaendig = knoepfe.endeNachtragen;
   return (
     <div
       className={`${styles.laufend} ${unvollstaendig ? styles.unvollstaendig : ""}`}
@@ -73,13 +86,18 @@ function Laufend({
       <p className={styles.seit}>{texte.erfassung.laeuftSeit(laeuftSeit(eintrag.beginn, jetzt))}</p>
       <p className={styles.beschreibung}>{wasUndWo(eintrag)}</p>
       {anleger && <p>{anleger}</p>}
-      {unvollstaendig ? (
+      {unvollstaendig && (
         <EndeFormular
           aktion={endeNachtragen.bind(null, eintrag.id)}
           datum={berlinerDatum(Date.parse(eintrag.beginn))}
         />
-      ) : (
-        <StoppKnopf fuer={mitarbeiterId} />
+      )}
+      {knoepfe.fertigHier && <FertigHierKnopf fuer={mitarbeiterId} />}
+      {knoepfe.arbeitstagBeenden && (
+        <ArbeitstagBeendenKnopf
+          fuer={mitarbeiterId}
+          fahrtSeit={eintrag.art === "fahrt" ? eintrag.beginn : null}
+        />
       )}
     </div>
   );

@@ -23,6 +23,10 @@ const FREMDSCHLUESSEL_VERLETZT = "23503";
 // Der Eintrag überschneidet sich mit einem anderen desselben Mitarbeiters
 // (Ausschlussregel, siehe Migration zu Nachträgen).
 const UEBERSCHNEIDUNG = "23P01";
+// Für einen Schritt der Live-Erfassung läuft nichts Passendes (mehr), oder
+// der laufende Eintrag ist unvollständig (Migration zu Fahrt und
+// Arbeitstag).
+const LAEUFT_NICHTS = "P0002";
 
 // Jede Aktion ist auch ohne die Oberfläche per Direktaufruf erreichbar.
 // Deshalb prüft sie zuerst, wer angemeldet ist und ob er für den Mitarbeiter
@@ -55,6 +59,8 @@ function fehlerBeimStart(error: PostgrestError): Rueckmeldung {
 }
 
 // fuer ist bei allen Aktionen der Mitarbeiter, dessen Zeit erfasst wird.
+// Läuft eine Fahrt, beendet die Datenbank sie im selben Schritt, ohne
+// Lücke (unter 2 Minuten wird sie nicht gespeichert).
 export async function zeiteintragStarten(
   fuer: string,
   _vorher: Rueckmeldung,
@@ -62,14 +68,17 @@ export async function zeiteintragStarten(
 ): Promise<Rueckmeldung> {
   const erfasser = await alsErfasser(fuer);
   if (erfasser.fehler) return erfasser.fehler;
-  const { supabase, ich } = erfasser;
+  const { supabase } = erfasser;
 
   const eingabe = pruefeStartEingabe(formData);
   if (!eingabe.ok) return FEHLER(eingabe.fehler);
 
-  const { error } = await supabase
-    .from("zeiteintrag")
-    .insert({ firma_id: ich.firma_id, mitarbeiter_id: fuer, ...eingabe.daten });
+  const { error } = await supabase.rpc("zeiteintrag_starten", {
+    wer: fuer,
+    objekt: eingabe.daten.objekt_id,
+    taetigkeit: eingabe.daten.taetigkeit_id,
+    zusatzauftrag: eingabe.daten.zusatzauftrag_id,
+  });
   if (error) return fehlerBeimStart(error);
 
   refresh();
@@ -90,36 +99,48 @@ export async function fahrtStarten(fuer: string): Promise<Rueckmeldung> {
   return OK();
 }
 
-// Stoppt den laufenden Zeiteintrag. Das Ende setzt die Datenbank mit ihrer
-// eigenen Uhr; der mitgeschickte Wert ist nur nötig, damit sich überhaupt
-// etwas ändert. Ein unvollständiger Eintrag wird nicht gestoppt: Bei ihm
-// übernähme die Datenbank den mitgeschickten Wert als nachgetragenes Ende,
-// also mehr als 12 Stunden. Das passiert, wenn die Seite vor Ablauf der 12
-// Stunden geladen und erst danach Stopp gedrückt wurde.
-export async function zeiteintragStoppen(fuer: string): Promise<Rueckmeldung> {
+// „Fertig hier“ und „Arbeitstag beenden“: Die Datenbank beendet den
+// laufenden Eintrag mit ihrer eigenen Uhr, aber nie einen unvollständigen
+// (die Seite wurde vor Ablauf der 12 Stunden geladen und erst danach
+// gedrückt). Dann meldet sie LAEUFT_NICHTS, ebenso wenn schon woanders
+// beendet wurde (z. B. auf einem zweiten Gerät oder durch doppelten
+// Druck); die neu geladene Seite zeigt, was gilt.
+async function schrittAusfuehren(
+  fuer: string,
+  schritt: "fertig_hier" | "arbeitstag_beenden",
+  meldungen: { laeuftNichts: string; fehler: string },
+): Promise<Rueckmeldung> {
   const erfasser = await alsErfasser(fuer);
   if (erfasser.fehler) return erfasser.fehler;
   const { supabase } = erfasser;
 
-  const jetzt = Date.now();
-  const unvollstaendigVor = jetzt - UNVOLLSTAENDIG_NACH_STUNDEN * 60 * 60 * 1000;
-  const { data, error } = await supabase
-    .from("zeiteintrag")
-    .update({ ende: new Date(jetzt).toISOString() })
-    .eq("mitarbeiter_id", fuer)
-    .is("ende", null)
-    .gte("beginn", new Date(unvollstaendigVor).toISOString())
-    .select("id");
-  if (error) {
-    console.error("Zeiteintrag stoppen fehlgeschlagen", error);
-    return FEHLER(texte.erfassung.fehlerStopp);
-  }
-
+  const { error } = await supabase.rpc(schritt, { wer: fuer });
   refresh();
-  // Schon woanders gestoppt (z. B. auf einem zweiten Gerät) oder
-  // inzwischen unvollständig; die neu geladene Seite zeigt, was gilt.
-  if (data.length === 0) return FEHLER(texte.erfassung.fehlerLaeuftNichtsOderUnvollstaendig);
-  return OK();
+  if (!error) return OK();
+  if (error.code === LAEUFT_NICHTS) return FEHLER(meldungen.laeuftNichts);
+  // Beim Start der Fahrt läuft inzwischen doch etwas (zweites Gerät).
+  if (error.code === LAEUFT_SCHON || error.code === UEBERSCHNEIDUNG) {
+    return FEHLER(texte.erfassung.fehlerLaeuftSchon);
+  }
+  console.error(`Schritt ${schritt} fehlgeschlagen`, error);
+  return FEHLER(meldungen.fehler);
+}
+
+// Beendet das laufende Objekt und startet im selben Schritt eine Fahrt.
+export async function fertigHier(fuer: string): Promise<Rueckmeldung> {
+  return schrittAusfuehren(fuer, "fertig_hier", {
+    laeuftNichts: texte.erfassung.fehlerLaeuftKeinObjekt,
+    fehler: texte.erfassung.fehlerFertigHier,
+  });
+}
+
+// Beendet den laufenden Eintrag mit dem Vermerk „Arbeitstag endet hier“;
+// danach startet nichts. Eine Fahrt bleibt als Rückfahrt gespeichert.
+export async function arbeitstagBeenden(fuer: string): Promise<Rueckmeldung> {
+  return schrittAusfuehren(fuer, "arbeitstag_beenden", {
+    laeuftNichts: texte.erfassung.fehlerLaeuftNichtsOderUnvollstaendig,
+    fehler: texte.erfassung.fehlerArbeitstagBeenden,
+  });
 }
 
 // eigener: Der Eintrag gehört dem angemeldeten Nutzer selbst.
@@ -204,7 +225,7 @@ export async function zeiteintragAendern(
 // als 12 Stunden), für sich selbst oder als Vorarbeiter bzw. Büro für
 // einen anderen. Die Datenbank übernimmt das Ende nur bei einem
 // unvollständigen Eintrag und markiert ihn dann als Nachtrag; bei jedem
-// anderen laufenden setzt sie ihre eigene Uhr wie beim Stopp.
+// anderen laufenden setzt sie ihre eigene Uhr wie bei „Fertig hier“.
 export async function endeNachtragen(
   id: string,
   _vorher: Rueckmeldung,
@@ -241,7 +262,7 @@ export async function endeNachtragen(
   // Inzwischen woanders beendet.
   if (data.length === 0) return FEHLER(texte.nachtrag.schonBeendet);
   // Nach der Uhr der Datenbank lief er noch keine 12 Stunden (die Uhren
-  // weichen knapp an der Grenze ab): Sie hat ihn wie bei einem Stopp mit
+  // weichen knapp an der Grenze ab): Sie hat ihn wie bei „Fertig hier“ mit
   // ihrer eigenen Uhr beendet.
   if (!data[0].nachtrag) return FEHLER(texte.nachtrag.mitJetztBeendet(UNVOLLSTAENDIG_NACH_STUNDEN));
   return OK(texte.nachtrag.gespeichert);

@@ -82,6 +82,7 @@ test("Das Anlegen zeigt alle Angaben, das Ändern nur, was sich geändert hat", 
         { feld: "Nachtrag", vorher: "–", nachher: "nein" },
         { feld: "Freigegeben", vorher: "–", nachher: "–" },
         { feld: "Abgerechnet", vorher: "–", nachher: "nein" },
+        { feld: "Arbeitstag endet hier", vorher: "–", nachher: "nein" },
       ],
     },
     {
@@ -186,6 +187,26 @@ test("Abrechnung und Rücknahme der Abrechnung stehen im Protokoll", () => {
   expect(zeilen.map((z) => z.aenderungen)).toEqual([
     [{ feld: "Abgerechnet", vorher: "nein", nachher: "ja" }],
     [{ feld: "Abgerechnet", vorher: "ja", nachher: "nein" }],
+  ]);
+});
+
+test("Der Vermerk „Arbeitstag endet hier“ steht im Protokoll, ohne den Eintrag zum Nachtrag zu machen", () => {
+  const [zeile] = protokollAnzeigen(
+    [
+      {
+        id: 12,
+        aktion: "geaendert",
+        geaendert_am: "2026-10-16T14:31:07+00:00",
+        geaendert_von_name: "Anna Fleißig",
+        // Einträge aus der Zeit vor dem Vermerk haben das Feld noch nicht.
+        vorher: GESTOPPT,
+        nachher: { ...GESTOPPT, arbeitstag_endet_hier: true },
+      },
+    ],
+    NAMEN,
+  );
+  expect(zeile.aenderungen).toEqual([
+    { feld: "Arbeitstag endet hier", vorher: "nein", nachher: "ja" },
   ]);
 });
 

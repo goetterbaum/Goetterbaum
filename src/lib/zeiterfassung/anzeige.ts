@@ -87,7 +87,7 @@ export function nachTagen(eintraege: MeinZeiteintrag[]): Tag[] {
 }
 
 // Seit wann ein Eintrag läuft: heute nur die Uhrzeit, an einem früheren
-// Tag mit Tag davor, damit ein vergessener Stopp auffällt.
+// Tag mit Tag davor, damit ein vergessenes Beenden auffällt.
 export function laeuftSeit(beginn: string, jetzt: number): string {
   const zeitpunkt = Date.parse(beginn);
   const um = uhrzeit.format(zeitpunkt);
@@ -99,8 +99,8 @@ export function laeuftSeit(beginn: string, jetzt: number): string {
 // Dieselbe Grenze steht in der Datenbank (privat.zeiteintrag_unvollstaendig).
 export const UNVOLLSTAENDIG_NACH_STUNDEN = 12;
 
-// Ein Eintrag, der länger als 12 Stunden läuft, ist unvollständig: Der
-// Stopp wurde wohl vergessen. Das ergibt sich aus der Laufzeit und wird
+// Ein Eintrag, der länger als 12 Stunden läuft, ist unvollständig: Das
+// Beenden wurde wohl vergessen. Das ergibt sich aus der Laufzeit und wird
 // nicht gespeichert; beendet wird er nie von selbst.
 export function istUnvollstaendig(
   eintrag: Pick<MeinZeiteintrag, "beginn" | "ende">,

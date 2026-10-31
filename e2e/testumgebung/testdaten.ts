@@ -247,6 +247,28 @@ export async function legeZeiteintragAn(
   return data.id;
 }
 
+// Verschiebt alle Zeiteinträge eines Mitarbeiters um minuten in die
+// Vergangenheit, z. B. damit eine eben gestartete Fahrt schon länger als 2
+// Minuten läuft. Der früheste zuerst, damit sich nichts überschneidet.
+export async function verschiebeZeiteintraege(mitarbeiterId: string, minuten: number) {
+  const dienst = dienstZugang()!;
+  const { data, error } = await dienst
+    .from("zeiteintrag")
+    .select("id, beginn, ende")
+    .eq("mitarbeiter_id", mitarbeiterId)
+    .order("beginn")
+    .returns<{ id: string; beginn: string; ende: string | null }[]>();
+  if (error) throw error;
+  const frueher = (zeit: string) => new Date(Date.parse(zeit) - minuten * 60_000).toISOString();
+  for (const eintrag of data) {
+    const { error: fehler } = await dienst
+      .from("zeiteintrag")
+      .update({ beginn: frueher(eintrag.beginn), ende: eintrag.ende && frueher(eintrag.ende) })
+      .eq("id", eintrag.id);
+    if (fehler) throw fehler;
+  }
+}
+
 // Eine eigene Firma mit Büro-Zugang nur für einen Test, z. B. wenn er
 // Einstellungen der Firma ändert, auf die sich parallele Tests verlassen.
 // Der Test entfernt sie am Ende mit entferneFirma; Reste abgebrochener

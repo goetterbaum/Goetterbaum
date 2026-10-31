@@ -40,13 +40,18 @@ async function laufenderEintrag(firmaId: string, mitarbeiterId: string, beginn: 
 async function gespeicherterEintrag(id: string) {
   const { data } = await dienstZugang()!
     .from("zeiteintrag")
-    .select("beginn, ende, nachtrag")
+    .select("beginn, ende, nachtrag, arbeitstag_endet_hier")
     .eq("id", id)
-    .single<{ beginn: string; ende: string | null; nachtrag: boolean }>();
+    .single<{
+      beginn: string;
+      ende: string | null;
+      nachtrag: boolean;
+      arbeitstag_endet_hier: boolean;
+    }>();
   return data!;
 }
 
-test("Ein Mitarbeiter trägt das Ende seines unvollständigen Eintrags nach; er wird zum Nachtrag", async () => {
+test("Ein Mitarbeiter trägt das Ende seines unvollständigen Eintrags nach; er wird zum Nachtrag und beendet den Arbeitstag", async () => {
   const { firmaA } = testdaten();
   const ich = await legeEigenenZugangAn(firmaA.id);
   const beginn = vor(13);
@@ -54,7 +59,11 @@ test("Ein Mitarbeiter trägt das Ende seines unvollständigen Eintrags nach; er 
   const supabase = await schnittstelleAls(ich);
 
   // Von selbst beendet wird nichts.
-  expect(await gespeicherterEintrag(id)).toMatchObject({ ende: null, nachtrag: false });
+  expect(await gespeicherterEintrag(id)).toMatchObject({
+    ende: null,
+    nachtrag: false,
+    arbeitstag_endet_hier: false,
+  });
 
   // In der Zukunft oder vor dem Beginn geht nicht.
   for (const ende of [vor(-1), vor(14)]) {
@@ -73,6 +82,7 @@ test("Ein Mitarbeiter trägt das Ende seines unvollständigen Eintrags nach; er 
   expect(data).toHaveLength(1);
   const gespeichert = await gespeicherterEintrag(id);
   expect(gespeichert.nachtrag).toBe(true);
+  expect(gespeichert.arbeitstag_endet_hier).toBe(true);
   expect(Date.parse(gespeichert.ende!)).toBe(Date.parse(ende));
   expect(Date.parse(gespeichert.beginn)).toBe(Date.parse(beginn));
 });
@@ -90,6 +100,8 @@ test("Bei einem Eintrag, der noch keine 12 Stunden läuft, setzt der Stopp weite
   expect(error).toBeNull();
   const gespeichert = await gespeicherterEintrag(id);
   expect(gespeichert.nachtrag).toBe(false);
+  // Ein normales Ende beendet keinen Arbeitstag.
+  expect(gespeichert.arbeitstag_endet_hier).toBe(false);
   expect(Math.abs(Date.parse(gespeichert.ende!) - Date.now())).toBeLessThan(UHR_SPIELRAUM_MS);
 });
 

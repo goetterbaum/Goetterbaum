@@ -1,7 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { devices, expect, test, type Page } from "@playwright/test";
 import { berlinerDatum } from "../src/lib/berliner-zeit";
-import { erwarteAngemeldet, feld, meldeAn, testdaten } from "./testumgebung/hilfen";
+import {
+  beendeArbeitstag,
+  erwarteAngemeldet,
+  feld,
+  meldeAn,
+  testdaten,
+} from "./testumgebung/hilfen";
 import {
   dienstZugang,
   legeEigenenZugangAn,
@@ -209,7 +215,7 @@ test.describe("am Handy", () => {
       }),
     ]);
 
-    await page.getByRole("button", { name: "Stopp" }).click();
+    await beendeArbeitstag(page);
     await expect(page.getByRole("listitem").filter({ hasText: wasUndWo })).toHaveCount(1);
 
     // Ohne Auswahl ist es reguläre Arbeit.
@@ -223,7 +229,7 @@ test.describe("am Handy", () => {
     ).toBeVisible();
     const [, regulaer] = await zeiteintraegeVon(ich);
     expect(regulaer).toMatchObject({ objekt_id: objekt.objektId, zusatzauftrag_id: null });
-    await page.getByRole("button", { name: "Stopp" }).click();
+    await beendeArbeitstag(page);
   });
 
   test("Ein Vorarbeiter trägt für einen Kollegen mit Zusatzauftrag nach; nach dem Erledigen bleibt die Zuordnung beim Ändern", async ({
