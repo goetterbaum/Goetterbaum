@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { Monatsauswahl } from "@/app/monatsauswahl";
 import { NurFuerBuero } from "@/app/nur-fuer-buero";
+import { berlinerDatum } from "@/lib/berliner-zeit";
+import { monatVon } from "@/lib/rechnungsvorbereitung/zeitraum";
 import { createClient } from "@/lib/supabase/server";
 import { istUnvollstaendig, tagUndZeit, wasUndWo } from "@/lib/zeiterfassung/anzeige";
 import type { FreigabeFilter } from "@/lib/zeiterfassung/freigabe";
@@ -64,7 +67,14 @@ async function Liste({ parameter }: { parameter: PageProps<"/freigabe">["searchP
   return (
     <>
       <p>{filter.freigegebene ? t.hinweisFreigegebene : t.hinweis}</p>
-      <FilterFormular filter={filter} auswahl={auswahl} />
+      <FilterFormular
+        filter={filter}
+        auswahl={auswahl}
+        aktuellerMonat={monatVon(berlinerDatum(jetzt))}
+      />
+      <p>
+        <Link href={zurRechnungsvorbereitung(filter)}>{t.zurRechnungsvorbereitung}</Link>
+      </p>
       {filter.freigegebene ? (
         <Freigegebene eintraege={eintraege} />
       ) : zeilen.length === 0 ? (
@@ -77,6 +87,15 @@ async function Liste({ parameter }: { parameter: PageProps<"/freigabe">["searchP
       </p>
     </>
   );
+}
+
+// Der nächste Arbeitsschritt nach dem Freigeben: die Rechnungsvorbereitung
+// mit dem gewählten Kunden (falls einer gewählt ist) und dem Monat des
+// Von-Datums.
+function zurRechnungsvorbereitung(filter: FreigabeFilter): string {
+  const auswahl = new URLSearchParams(filter.kunde ? { kunde: filter.kunde } : {});
+  auswahl.set("monat", monatVon(filter.von));
+  return `/rechnungsvorbereitung?${auswahl}`;
 }
 
 // Die schon freigegebenen Einträge mit wann und von wem. Zurückgenommen
@@ -126,13 +145,21 @@ function Freigegebene({ eintraege }: { eintraege: ZeiteintragDerFirma[] }) {
 function FilterFormular({
   filter,
   auswahl,
+  aktuellerMonat,
 }: {
   filter: FreigabeFilter;
   auswahl: Awaited<ReturnType<typeof ladeFreigabeFilterAuswahl>>;
+  aktuellerMonat: string;
 }) {
   const t = texte.freigabe;
   return (
     <form action="/freigabe">
+      {/* Ein Monat zeigt sofort an, mit den übrigen Filtern im Formular. */}
+      <Monatsauswahl
+        gewaehlt={filter.monat}
+        jahr={Number(filter.von.slice(0, 4))}
+        aktuellerMonat={aktuellerMonat}
+      />
       <label>
         {t.von} <input type="date" name="von" defaultValue={filter.von} required />
       </label>{" "}

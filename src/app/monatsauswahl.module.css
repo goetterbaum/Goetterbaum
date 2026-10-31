@@ -1,0 +1,32 @@
+.auswahl {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.jahr {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+}
+
+.monate {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Der gewählte Monat ist hervorgehoben. */
+.monate button[aria-pressed="true"] {
+  background: var(--foreground);
+  color: var(--background);
+  font-weight: 600;
+}
+
+/* Spätere Monate ausgegraut. */
+.auswahl button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

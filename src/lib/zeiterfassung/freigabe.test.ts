@@ -1,20 +1,33 @@
 import { expect, test } from "vitest";
 import { freigabeAuswahl, freigabeFilter } from "./freigabe";
 
-test("Ohne Angaben gilt der Zeitraum vom Ersten des Vormonats bis heute, ganze Tage in Berlin", () => {
-  // Kurz nach Mitternacht in Berlin ist schon der 17.10., in UTC noch der 16.
-  const jetzt = Date.parse("2026-10-16T22:30:12Z");
+test("Ohne Angaben gilt ab dem 11. der ganze aktuelle Monat, ganze Tage in Berlin", () => {
+  // Kurz nach Mitternacht in Berlin ist schon der 11.10., in UTC noch der 10.
+  const jetzt = Date.parse("2026-10-10T22:30:12Z");
   expect(freigabeFilter({}, jetzt)).toEqual({
-    von: "2026-09-01",
-    bis: "2026-10-17",
+    von: "2026-10-01",
+    bis: "2026-10-31",
+    monat: "2026-10",
     mitarbeiter: null,
     kunde: null,
     objekt: null,
     freigegebene: false,
-    // Mitternacht in Berlin (Sommerzeit, UTC + 2 Stunden) am ersten Tag
-    // und am Tag nach dem letzten.
+    // Mitternacht in Berlin am ersten Tag (Sommerzeit, UTC + 2 Stunden)
+    // und am Tag nach dem letzten (Winterzeit, UTC + 1 Stunde).
+    ab: "2026-09-30T22:00:00.000Z",
+    bisVor: "2026-10-31T23:00:00.000Z",
+  });
+});
+
+test("Ohne Angaben gilt bis einschließlich zum 10. der ganze Vormonat", () => {
+  // 23:59:59 am 10.10. in Berlin.
+  const jetzt = Date.parse("2026-10-10T21:59:59Z");
+  expect(freigabeFilter({}, jetzt)).toMatchObject({
+    von: "2026-09-01",
+    bis: "2026-09-30",
+    monat: "2026-09",
     ab: "2026-08-31T22:00:00.000Z",
-    bisVor: "2026-10-17T22:00:00.000Z",
+    bisVor: "2026-09-30T22:00:00.000Z",
   });
 });
 
@@ -49,13 +62,14 @@ test("Mitarbeiter, Kunde und Objekt filtern nur mit gültiger Kennung", () => {
 
 test("Ungültige Tage ersetzt die Vorgabe, ein vertauschter Zeitraum wird umgedreht", () => {
   const jetzt = Date.parse("2027-01-05T10:00:00Z");
-  // Über den Jahreswechsel ist der Vormonat der Dezember.
+  // Im Januar bis zum 10. ist der Dezember des Vorjahres vorausgewählt.
   expect(
     freigabeFilter({ von: "2026-02-30", bis: ["2027-01-02", "2027-01-03"] }, jetzt),
-  ).toMatchObject({ von: "2026-12-01", bis: "2027-01-05" });
+  ).toMatchObject({ von: "2026-12-01", bis: "2026-12-31", monat: "2026-12" });
   expect(freigabeFilter({ von: "2026-10-20", bis: "2026-10-01" }, jetzt)).toMatchObject({
     von: "2026-10-01",
     bis: "2026-10-20",
+    monat: null,
     ab: "2026-09-30T22:00:00.000Z",
     bisVor: "2026-10-20T22:00:00.000Z",
   });
