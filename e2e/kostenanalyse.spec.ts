@@ -170,7 +170,8 @@ test("Büro trägt Arbeitgeberkosten ein und sieht in der Kostenanalyse die rich
     await expect(zeile(page, `Tagessumme ${anna.name}`)).toHaveText(
       /4:00\sStd\.\s*1:00\sStd\.\s*560,00\s€\s*155,00\s€\s*405,00\s€\s*vorläufig/,
     );
-    await expect(page.getByText(ben.name)).toHaveCount(0);
+    // Nur Sichtbares: Next.js hält die zuvor besuchte Seite versteckt bereit.
+    await expect(page.getByText(ben.name).filter({ visible: true })).toHaveCount(0);
 
     // Mit › zum nächsten Tag: Ben eine Stunde in der Villa zum Standard.
     await page.getByRole("link", { name: "Folgetag" }).click();
@@ -179,7 +180,7 @@ test("Büro trägt Arbeitgeberkosten ein und sieht in der Kostenanalyse die rich
     await expect(zeile(page, villa.bezeichnung)).toHaveText(
       /1:00\sStd\.\s*0:00\sStd\.\s*30,00\s€\s*26,00\s€\s*4,00\s€\s*vorläufig/,
     );
-    await expect(page.getByText(anna.name)).toHaveCount(0);
+    await expect(page.getByText(anna.name).filter({ visible: true })).toHaveCount(0);
 
     // Ohne Angabe zeigt die Tagesansicht heute.
     await page.getByRole("link", { name: "Zurück zur Objektübersicht" }).click();
