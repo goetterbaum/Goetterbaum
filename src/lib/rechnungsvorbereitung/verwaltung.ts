@@ -15,11 +15,16 @@ import {
   rechnungsvorbereitung,
   rechnungsvorbereitungFuerZusatzauftrag,
   type Monat,
+  type ObjektStundensatz,
   type Rechnungsvorbereitung,
   type Taetigkeit,
   type Zeiteintrag,
 } from "@/lib/rechnungsvorbereitung";
-import { ladeKundenStundensaetze } from "@/lib/stundensaetze/verwaltung";
+import {
+  ladeKundenStundensaetze,
+  ladeObjektStundensaetze,
+  type ObjektStundensatzDaten,
+} from "@/lib/stundensaetze/verwaltung";
 import { alleSeiten } from "@/lib/supabase/alle-seiten";
 import {
   gewaehlterZeitraum,
@@ -109,7 +114,10 @@ export async function ladeRechnungsvorbereitung(
   if (objekte.error) throw objekte.error;
 
   const objektIds = objekte.data.map((o) => o.id);
-  const zusatzauftraege = await ladeNichtAbgerechneteZusatzauftraege(supabase, objektIds);
+  const [zusatzauftraege, objektStundensaetze] = await Promise.all([
+    ladeNichtAbgerechneteZusatzauftraege(supabase, objektIds),
+    ladeObjektStundensaetze(supabase, objektIds),
+  ]);
   const erledigteFestbetraege = zusatzauftraege
     .filter((za) => za.abrechnungsart === "festbetrag" && za.erledigt)
     .map((za) => za.id);
@@ -132,6 +140,7 @@ export async function ladeRechnungsvorbereitung(
         pauschaleCent: o.pauschale_cent,
       })),
     taetigkeiten: taetigkeiten.fuerRechenbaustein,
+    objektStundensaetze: objektStundensaetze.map(objektStundensatzFuerRechenbaustein),
     zusatzauftraege: zusatzauftraege.map((za) => ({
       id: za.id,
       objektId: za.objekt_id,
@@ -181,6 +190,14 @@ async function ladeTaetigkeiten(
   };
 }
 
+function objektStundensatzFuerRechenbaustein(s: ObjektStundensatzDaten): ObjektStundensatz {
+  return {
+    objektId: s.objekt_id,
+    taetigkeitId: s.taetigkeit_id,
+    stundensatzCent: s.stundensatz_cent,
+  };
+}
+
 type EinzelnerZusatzauftragZeile = ZusatzauftragZeile & {
   abgerechnet_in: string | null;
   objekt: { bezeichnung: string; kunde_id: string };
@@ -224,32 +241,34 @@ export async function ladeRechnungsvorbereitungFuerZusatzauftrag(
   if (error) throw error;
   if (!za) return null;
 
-  const [kunde, firma, taetigkeiten, zeiteintraege, nichtFreigegeben] = await Promise.all([
-    ladeKunde(supabase, za.objekt.kunde_id),
-    ladeFirma(supabase, firmaId),
-    ladeTaetigkeiten(supabase, za.objekt.kunde_id),
-    alleSeiten((ab, bis) =>
+  const [kunde, firma, taetigkeiten, objektStundensaetze, zeiteintraege, nichtFreigegeben] =
+    await Promise.all([
+      ladeKunde(supabase, za.objekt.kunde_id),
+      ladeFirma(supabase, firmaId),
+      ladeTaetigkeiten(supabase, za.objekt.kunde_id),
+      ladeObjektStundensaetze(supabase, [za.objekt_id]),
+      alleSeiten((ab, bis) =>
+        supabase
+          .from("zeiteintrag")
+          .select(ZEITEINTRAG_SPALTEN)
+          .eq("zusatzauftrag_id", za.id)
+          .not("freigegeben_am", "is", null)
+          .is("abgerechnet_in", null)
+          .order("beginn")
+          .order("id")
+          .range(ab, bis)
+          .returns<ZeiteintragZeile[]>(),
+      ),
       supabase
         .from("zeiteintrag")
-        .select(ZEITEINTRAG_SPALTEN)
+        .select("id", { count: "exact", head: true })
         .eq("zusatzauftrag_id", za.id)
-        .not("freigegeben_am", "is", null)
-        .is("abgerechnet_in", null)
-        .order("beginn")
-        .order("id")
-        .range(ab, bis)
-        .returns<ZeiteintragZeile[]>(),
-    ),
-    supabase
-      .from("zeiteintrag")
-      .select("id", { count: "exact", head: true })
-      .eq("zusatzauftrag_id", za.id)
-      .is("freigegeben_am", null)
-      .then(({ count, error }) => {
-        if (error) throw error;
-        return count ?? 0;
-      }),
-  ]);
+        .is("freigegeben_am", null)
+        .then(({ count, error }) => {
+          if (error) throw error;
+          return count ?? 0;
+        }),
+    ]);
   if (!kunde) return null;
   const rundungsregel = kunde.rundungsregel ?? firma.rundungsregel;
 
@@ -264,6 +283,7 @@ export async function ladeRechnungsvorbereitungFuerZusatzauftrag(
       erledigt: za.erledigt && za.abgerechnet_in === null,
     },
     taetigkeiten: taetigkeiten.fuerRechenbaustein,
+    objektStundensaetze: objektStundensaetze.map(objektStundensatzFuerRechenbaustein),
     zeiteintraege: zeiteintraege.map(zeiteintragFuerRechenbaustein),
   });
 

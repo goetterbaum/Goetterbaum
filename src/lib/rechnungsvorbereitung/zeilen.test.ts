@@ -29,6 +29,7 @@ test("Pauschalen je Monat und Stunden je Objekt und Tätigkeit werden mit Namen 
       { id: "t-unterhalt", standardStundensatzCent: 3000, kundenStundensatzCent: null },
       { id: "t-glas", standardStundensatzCent: 4200, kundenStundensatzCent: 3850 },
     ],
+    objektStundensaetze: [],
     zusatzauftraege: [],
     zeiteintraege: [
       {
@@ -105,6 +106,7 @@ test("Zusatzaufträge stehen getrennt mit ihrer Beschreibung, nach Stunden mit T
     taetigkeiten: [
       { id: "t-unterhalt", standardStundensatzCent: 3000, kundenStundensatzCent: null },
     ],
+    objektStundensaetze: [],
     zusatzauftraege: [
       {
         id: "za-sturm",
@@ -192,6 +194,7 @@ test("Quartalsweise: Pauschalen je Monat, Stunden und Zusatzaufträge mit dem ga
     taetigkeiten: [
       { id: "t-unterhalt", standardStundensatzCent: 3000, kundenStundensatzCent: null },
     ],
+    objektStundensaetze: [],
     zusatzauftraege: [
       {
         id: "za-sturm",

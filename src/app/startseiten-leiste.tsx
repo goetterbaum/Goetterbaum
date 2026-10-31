@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { texte } from "@/texte";
+import { Logo } from "./logo";
 import styles from "./startseiten-leiste.module.css";
 
 // Die Startseite braucht keinen Weg zu sich selbst, und vor der Anmeldung
@@ -16,6 +17,7 @@ export function StartseitenLeiste() {
   return (
     <>
       <nav className={styles.leiste}>
+        <Logo />
         <Link href="/" className={styles.link}>
           <HausSymbol />
           {texte.leiste.startseite}
@@ -30,8 +32,8 @@ function HausSymbol() {
   return (
     <svg
       aria-hidden="true"
-      width="16"
-      height="16"
+      width="18"
+      height="18"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"

@@ -81,7 +81,7 @@ Abrechnung nach erfasster Zeit mal Stundensatz.
 _Avoid_: Regieabrechnung, Aufwandsabrechnung
 
 **Stundensatz**:
-Der Preis pro Stunde einer Tätigkeit. Gilt standardmäßig für alle Kunden und kann für einzelne Kunden abweichen.
+Der Preis pro Stunde einer Tätigkeit. Gilt standardmäßig für alle Kunden und kann für einzelne Kunden, darunter für einzelne Objekte, abweichen. Ein Zusatzauftrag nach Stunden kann einen eigenen Satz für alle seine Tätigkeiten haben. Es gilt der speziellste: Zusatzauftrag, dann Objekt, dann Kunde, dann Standard.
 _Avoid_: Stundenpreis, Verrechnungssatz
 
 **Rundungsregel**:

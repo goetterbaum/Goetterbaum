@@ -47,6 +47,7 @@ function ergebnis() {
       { id: "t-unterhalt", standardStundensatzCent: 3000, kundenStundensatzCent: null },
       { id: "t-glas", standardStundensatzCent: 4000, kundenStundensatzCent: null },
     ],
+    objektStundensaetze: [],
     zusatzauftraege: [
       {
         id: "za-keller",

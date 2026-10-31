@@ -4,6 +4,7 @@
 // der Geld berechnet wird. Alle Beträge in Cent als ganze Zahlen.
 import type { Rundungsregel } from "./abrechnung";
 import { aufBerlinerTageVerteilt, berlinerMitternacht } from "./berliner-zeit";
+import { geltenderStundensatz } from "./stundensaetze/regeln";
 
 // Ein Monat als "JJJJ-MM", z. B. "2026-07".
 export type Monat = string;
@@ -24,6 +25,14 @@ export type Taetigkeit = {
   id: string;
   standardStundensatzCent: number;
   kundenStundensatzCent: number | null;
+};
+
+// Ein abweichender Stundensatz eines Objekts für eine Tätigkeit; er hat
+// Vorrang vor dem des Kunden.
+export type ObjektStundensatz = {
+  objektId: string;
+  taetigkeitId: string;
+  stundensatzCent: number;
 };
 
 export type Zusatzauftrag = {
@@ -53,6 +62,7 @@ export type Eingabe = {
   objekte: Objekt[];
   // Alle Tätigkeiten, die in den Zeiteinträgen vorkommen (auch archivierte).
   taetigkeiten: Taetigkeit[];
+  objektStundensaetze: ObjektStundensatz[];
   // Nur noch nicht abgerechnete Zusatzaufträge der Objekte.
   zusatzauftraege: Zusatzauftrag[];
   // Freigegebene, noch nicht abgerechnete Zeiteinträge des Kunden.
@@ -171,7 +181,7 @@ export function rechnungsvorbereitung(eingabe: Eingabe): Rechnungsvorbereitung {
     const regulaer = berechneteTage.filter(
       (tag) => tag.objektId === objekt.id && tag.zusatzauftragId === null,
     );
-    for (const stunden of stundenJeTaetigkeit(regulaer, eingabe.taetigkeiten)) {
+    for (const stunden of stundenJeTaetigkeit(regulaer, objekt.id, eingabe)) {
       positionen.push({ art: "stunden", objektId: objekt.id, ...stunden });
     }
   }
@@ -185,7 +195,7 @@ export function rechnungsvorbereitung(eingabe: Eingabe): Rechnungsvorbereitung {
       continue;
     }
     const fuerAuftrag = berechneteTage.filter((tag) => tag.zusatzauftragId === zusatzauftragId);
-    for (const stunden of stundenJeTaetigkeit(fuerAuftrag, eingabe.taetigkeiten)) {
+    for (const stunden of stundenJeTaetigkeit(fuerAuftrag, objektId, eingabe)) {
       positionen.push({ art: "zusatzauftrag-stunden", zusatzauftragId, objektId, ...stunden });
     }
   }
@@ -205,6 +215,8 @@ export type EingabeFuerZusatzauftrag = {
   zusatzauftrag: Zusatzauftrag;
   // Alle Tätigkeiten, die in den Zeiteinträgen vorkommen (auch archivierte).
   taetigkeiten: Taetigkeit[];
+  // Die Stundensätze des Objekts, zu dem der Zusatzauftrag gehört.
+  objektStundensaetze: ObjektStundensatz[];
   // Freigegebene, noch nicht abgerechnete Zeiteinträge des Zusatzauftrags
   // aus allen Monaten.
   zeiteintraege: Zeiteintrag[];
@@ -251,7 +263,7 @@ export function rechnungsvorbereitungFuerZusatzauftrag(
       a.datum.localeCompare(b.datum) ||
       taetigkeitStelle(a.taetigkeitId) - taetigkeitStelle(b.taetigkeitId),
   );
-  const positionen: Position[] = stundenJeTaetigkeit(tage, taetigkeiten).map((stunden) => ({
+  const positionen: Position[] = stundenJeTaetigkeit(tage, objektId, eingabe).map((stunden) => ({
     art: "zusatzauftrag-stunden",
     zusatzauftragId,
     objektId,
@@ -265,15 +277,26 @@ export function rechnungsvorbereitungFuerZusatzauftrag(
   };
 }
 
-// Die Stunden je Tätigkeit aus den Tagen einer Position, in der
+// Die Stunden je Tätigkeit aus den Tagen einer Position im Objekt, in der
 // Reihenfolge der Tätigkeiten.
-function stundenJeTaetigkeit(tage: GerundeterTag[], taetigkeiten: Taetigkeit[]): Stunden[] {
+function stundenJeTaetigkeit(
+  tage: GerundeterTag[],
+  objektId: string,
+  { taetigkeiten, objektStundensaetze }: Pick<Eingabe, "taetigkeiten" | "objektStundensaetze">,
+): Stunden[] {
   return taetigkeiten.flatMap((taetigkeit) => {
     const minuten = tage
       .filter((tag) => tag.taetigkeitId === taetigkeit.id)
       .reduce((summe, tag) => summe + tag.minuten, 0);
     if (minuten === 0) return [];
-    const stundensatzCent = taetigkeit.kundenStundensatzCent ?? taetigkeit.standardStundensatzCent;
+    const objektSatz = objektStundensaetze.find(
+      (s) => s.objektId === objektId && s.taetigkeitId === taetigkeit.id,
+    );
+    const { stundensatzCent } = geltenderStundensatz({
+      standardCent: taetigkeit.standardStundensatzCent,
+      kundeCent: taetigkeit.kundenStundensatzCent,
+      objektCent: objektSatz?.stundensatzCent ?? null,
+    });
     const betragCent = Math.round((minuten * stundensatzCent) / 60);
     return [{ taetigkeitId: taetigkeit.id, minuten, stundensatzCent, betragCent }];
   });
