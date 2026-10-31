@@ -83,6 +83,13 @@ export function datumAlsText(datum: string): string {
   return `${tag}.${monat}.${jahr}`;
 }
 
+// Der Tag "JJJJ-MM-TT", der `tage` Tage vor (negativ) oder nach `datum`
+// liegt.
+export function tagVerschoben(datum: string, tage: number): string {
+  const [jahr, monat, tag] = datum.split("-").map(Number);
+  return alsDatum(jahr, monat, tag + tage);
+}
+
 // Der heutige Tag in Berlin als "JJJJ-MM-TT".
 export function heuteInBerlin(): string {
   return berlinerDatum(Date.now());

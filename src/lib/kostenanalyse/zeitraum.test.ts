@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { kostenZeitraum } from "./zeitraum";
+import { kostenTag, kostenZeitraum } from "./zeitraum";
 
 // 31.10.2026, 14:00 in Berlin.
 const JETZT = Date.parse("2026-10-31T14:00:00+01:00");
@@ -41,5 +41,14 @@ test("Ohne Angabe oder mit einem anderen Zeitraum gilt der vorausgewählte Monat
       von: "2026-10-01",
       bis: "2026-10-31",
     });
+  }
+});
+
+test("Der Tag der Tagesansicht kommt aus der Adresszeile, sonst ist es heute in Berlin", () => {
+  expect(kostenTag({ datum: "2026-07-06" }, JETZT)).toBe("2026-07-06");
+  // 31.10.2026, 23:30 UTC ist in Berlin schon der 1. November.
+  const kurzVorMitternacht = Date.parse("2026-10-31T23:30:00Z");
+  for (const parameter of [{}, { datum: "2026-02-30" }, { datum: "gestern" }]) {
+    expect(kostenTag(parameter, kurzVorMitternacht)).toBe("2026-11-01");
   }
 });

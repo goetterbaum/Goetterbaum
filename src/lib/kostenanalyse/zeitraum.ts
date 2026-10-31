@@ -1,6 +1,8 @@
 // Der Zeitraum der Kostenanalyse: ein Monat oder ein ganzes Jahr, aus der
-// Adresszeile (von, bis) wie bei den übrigen Auswertungen.
+// Adresszeile (von, bis) wie bei den übrigen Auswertungen; für die
+// Tagesansicht ein Tag (datum).
 import { monatsZeitraum, vorausgewaehlterMonat, type Parameter } from "@/lib/auswertungen/zeitraum";
+import { berlinerDatum } from "@/lib/berliner-zeit";
 import type { Monat } from "@/lib/rechnungsvorbereitung";
 import { monatAlsText } from "@/lib/rechnungsvorbereitung/zeitraum";
 import { istDatum } from "@/lib/zeiterfassung/nachtrag";
@@ -38,6 +40,19 @@ export function kostenZeitraum(parameter: Parameter, jetzt: number): KostenZeitr
     if (monat.von === von && monat.bis === bis) return einMonat(von.slice(0, 7));
   }
   return einMonat(vorausgewaehlterMonat(jetzt));
+}
+
+// Der Tag der Tagesansicht ("JJJJ-MM-TT"): datum aus der Adresszeile,
+// sonst heute in Berlin.
+export function kostenTag(parameter: Parameter, jetzt: number): string {
+  const wert = parameter.datum;
+  const datum = typeof wert === "string" ? wert.trim() : "";
+  return istDatum(datum) ? datum : berlinerDatum(jetzt);
+}
+
+// Der Monat, in dem ein Tag liegt, als Zeitraum.
+export function monatDerKosten(datum: string): KostenZeitraum {
+  return einMonat(datum.slice(0, 7));
 }
 
 function einMonat(monat: Monat): KostenZeitraum {

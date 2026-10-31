@@ -791,6 +791,22 @@ export const texte = {
     } satisfies Record<ArbeitgeberkostenHerkunft, string>,
     tagessumme: (datum: string) => `Summe ${datum}`,
     summe: "Summe",
+    zurTagesansicht: "Tagesansicht je Mitarbeiter",
+    tagTitel: "Kostenanalyse: Tagesansicht",
+    tagHinweis:
+      "Je Mitarbeiter und Arbeitstag die Objekte mit Einnahme, Arbeitgeberkosten und Deckungsbeitrag. Ein Arbeitstag zählt zum Tag seines Beginns. Pauschal-Objekte bekommen den Anteil der Monatspauschale nach Minuten, bis zum Monatsende „vorläufig“; ein Festbetrag wird nach Minuten über alle seine Einträge verteilt.",
+    tagUeberschrift: (datum: string) => `Tagesansicht ${datum}`,
+    tag: "Tag",
+    anzeigen: "Anzeigen",
+    vortag: "Vortag",
+    folgetag: "Folgetag",
+    pfeilVortag: "‹",
+    pfeilFolgetag: "›",
+    keineArbeitstage: "An diesem Tag hat kein Arbeitstag begonnen.",
+    arbeitstag: (vonBis: string) => `Arbeitstag ${vonBis}`,
+    spalteArbeitszeit: "Arbeitszeit",
+    tagessummeMitarbeiter: (name: string) => `Tagessumme ${name}`,
+    summeDesTags: "Summe aller Mitarbeiter",
   },
   abrechnung: {
     abgerechnet:

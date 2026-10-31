@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import {
   kostenanalyse,
+  tagesansicht,
   type Eingabe,
   type Kostenanalyse,
   type ZeiteintragFuerKosten,
@@ -676,4 +677,198 @@ test("Ein archiviertes Pauschal-Objekt erscheint nur mit Einsatz und bekommt die
     arbeitskostenCent: 2600,
   });
   expect(kostenanalyse(eingabe({ objekte: [archiviert] })).kunden).toEqual([]);
+});
+
+// Tagesansicht: dieselbe Eingabe, die Monate zählen dort nicht; dazu der
+// Tag und heute.
+function tag(datum: string, aenderungen: Partial<Eingabe> = {}, heute = "2026-10-31") {
+  return tagesansicht(eingabe(aenderungen), datum, heute);
+}
+
+test("Tagesansicht: je Mitarbeiter der Arbeitstag von–bis, je Objekt eine Zeile und die Tagessumme", () => {
+  const ergebnis = tag("2026-07-06", {
+    zeiteintraege: [
+      eintrag("2026-07-06T08:00:00+02:00", "2026-07-06T10:00:00+02:00"),
+      fahrt("2026-07-06T10:00:00+02:00", "2026-07-06T10:30:00+02:00"),
+      eintrag("2026-07-06T10:30:00+02:00", "2026-07-06T11:30:00+02:00", {
+        objektId: "buero-haus",
+        arbeitstagEndetHier: true,
+      }),
+      // Am Tag danach: gehört nicht dazu.
+      eintrag("2026-07-07T08:00:00+02:00", "2026-07-07T09:00:00+02:00"),
+    ],
+  });
+  expect(ergebnis.mitarbeiter).toHaveLength(1);
+  const [anna] = ergebnis.mitarbeiter;
+  expect(anna.mitarbeiterId).toBe("anna");
+  expect(anna.arbeitstage).toHaveLength(1);
+  expect(anna.arbeitstage[0]).toMatchObject({
+    beginn: "2026-07-06T08:00:00+02:00",
+    ende: "2026-07-06T11:30:00+02:00",
+    fahrtenOhneObjekt: null,
+  });
+  // Villa: 2 Std. für 60 € minus 2 Std. und 15 Min. Fahrt zu 26 €.
+  // Bürohaus: die ganze Juli-Pauschale (450 €), denn es ist sein einziger
+  // Einsatz im Monat, minus 1 Std. und 15 Min. Fahrt.
+  expect(
+    anna.arbeitstage[0].zeilen.map((z) => [
+      z.objektId,
+      z.zusatzauftragId,
+      z.arbeitsMinuten,
+      z.fahrtMinuten,
+      z.einnahmenCent,
+      z.kostenCent,
+      z.deckungsbeitragCent,
+    ]),
+  ).toEqual([
+    ["villa", null, 120, 15, 6000, 5850, 150],
+    ["buero-haus", null, 60, 15, 45000, 3250, 41750],
+  ]);
+  expect(anna.summe).toMatchObject({
+    einnahmenCent: 51000,
+    arbeitsMinuten: 180,
+    fahrtMinuten: 30,
+    kostenCent: 9100,
+    deckungsbeitragCent: 41900,
+  });
+  expect(ergebnis.summe.deckungsbeitragCent).toBe(41900);
+});
+
+test("Tagesansicht: Die Pauschal-Anteile der Tage ergeben zusammen genau die Pauschale, bis Monatsende vorläufig", () => {
+  const aenderungen: Partial<Eingabe> = {
+    objekte: [
+      {
+        id: "buero-haus",
+        kundeId: "hausverwaltung",
+        abrechnungsart: "pauschale",
+        pauschaleCent: 10000,
+        archiviert: false,
+      },
+    ],
+    // 1 Std., 1 Std. und 2 Std.; der letzte Arbeitstag beginnt am
+    // 31. Juli und läuft in den August hinein, zählt aber zum Juli.
+    zeiteintraege: [
+      eintrag("2026-07-01T08:00:00+02:00", "2026-07-01T09:00:00+02:00", { objektId: "buero-haus" }),
+      eintrag("2026-07-02T08:00:00+02:00", "2026-07-02T09:00:00+02:00", { objektId: "buero-haus" }),
+      eintrag("2026-07-31T23:00:00+02:00", "2026-07-31T23:30:00+02:00", { objektId: "buero-haus" }),
+      eintrag("2026-08-01T00:00:00+02:00", "2026-08-01T01:30:00+02:00", { objektId: "buero-haus" }),
+    ],
+  };
+  const anteil = (datum: string, heute?: string) =>
+    tag(datum, aenderungen, heute).mitarbeiter[0].arbeitstage[0].zeilen[0];
+  expect(anteil("2026-07-01").einnahmenCent).toBe(2500);
+  expect(anteil("2026-07-02").einnahmenCent).toBe(2500);
+  expect(anteil("2026-07-31").einnahmenCent).toBe(5000);
+  expect(tag("2026-08-01", aenderungen).mitarbeiter).toEqual([]);
+  expect(anteil("2026-07-01").vorlaeufig).toBe(false);
+  expect(anteil("2026-07-01", "2026-07-31").vorlaeufig).toBe(true);
+});
+
+test("Tagesansicht: Ein Festbetrag wird nach Minuten über alle seine Einträge verteilt, bis zur Erledigung vorläufig", () => {
+  const zaun = {
+    id: "zaun",
+    objektId: "villa",
+    abrechnungsart: "festbetrag" as const,
+    festbetragCent: 50000,
+    stundensatzCent: null,
+    erledigt: false,
+  };
+  const aenderungen: Partial<Eingabe> = {
+    zusatzauftraege: [zaun],
+    // 1 Std. im Juni, 3 Std. im Juli.
+    zeiteintraege: [
+      eintrag("2026-06-30T08:00:00+02:00", "2026-06-30T09:00:00+02:00", {
+        zusatzauftragId: "zaun",
+      }),
+      eintrag("2026-07-06T08:00:00+02:00", "2026-07-06T11:00:00+02:00", {
+        zusatzauftragId: "zaun",
+      }),
+    ],
+  };
+  const zeileAm = (datum: string, za = zaun) =>
+    tag(datum, { ...aenderungen, zusatzauftraege: [za] }).mitarbeiter[0].arbeitstage[0].zeilen[0];
+  expect(zeileAm("2026-06-30")).toMatchObject({
+    objektId: "villa",
+    zusatzauftragId: "zaun",
+    einnahmenCent: 12500,
+    arbeitskostenCent: 2600,
+    deckungsbeitragCent: 9900,
+    vorlaeufig: true,
+  });
+  expect(zeileAm("2026-07-06").einnahmenCent).toBe(37500);
+  expect(zeileAm("2026-07-06", { ...zaun, erledigt: true }).vorlaeufig).toBe(false);
+});
+
+test("Tagesansicht: Zwei Mitarbeiter im selben Objekt teilen die Einnahme des Tags nach Minuten", () => {
+  const ergebnis = tag("2026-07-06", {
+    kunden: [{ id: "hausverwaltung", rundungsregel: "15-minuten", kundenStundensaetze: [] }],
+    arbeitgeberkosten: {
+      standard: [{ gueltigAb: "2026-01-01", centJeStunde: 2600 }],
+      jeMitarbeiter: { ben: [{ gueltigAb: "2026-07-01", centJeStunde: 3100 }] },
+    },
+    zeiteintraege: [
+      eintrag("2026-07-06T08:00:00+02:00", "2026-07-06T09:07:00+02:00"),
+      eintrag("2026-07-06T07:00:00+02:00", "2026-07-06T07:20:00+02:00", { mitarbeiterId: "ben" }),
+    ],
+  });
+  // 67 + 20 = 87 Minuten, auf 90 gerundet: 45,00 €, im Verhältnis 67 : 20.
+  expect(
+    ergebnis.mitarbeiter.map((m) => [
+      m.mitarbeiterId,
+      m.summe.einnahmenCent,
+      m.summe.kostenCent,
+      m.summe.deckungsbeitragCent,
+    ]),
+  ).toEqual([
+    ["ben", 1034, 1033, 1],
+    ["anna", 3466, 2903, 563],
+  ]);
+  expect(ergebnis.summe).toMatchObject({ einnahmenCent: 4500, deckungsbeitragCent: 564 });
+});
+
+test("Tagesansicht: Ein Arbeitstag über Mitternacht zählt ganz zum Tag seines Beginns", () => {
+  const zeiteintraege = [
+    eintrag("2026-07-06T22:00:00+02:00", "2026-07-06T23:00:00+02:00"),
+    fahrt("2026-07-06T23:00:00+02:00", "2026-07-07T00:30:00+02:00"),
+    eintrag("2026-07-07T00:30:00+02:00", "2026-07-07T01:30:00+02:00", {
+      objektId: "buero-haus",
+      arbeitstagEndetHier: true,
+    }),
+  ];
+  const ergebnis = tag("2026-07-06", { zeiteintraege });
+  expect(ergebnis.mitarbeiter[0].arbeitstage[0]).toMatchObject({
+    beginn: "2026-07-06T22:00:00+02:00",
+    ende: "2026-07-07T01:30:00+02:00",
+  });
+  expect(
+    ergebnis.mitarbeiter[0].arbeitstage[0].zeilen.map((z) => [z.objektId, z.fahrtMinuten]),
+  ).toEqual([
+    ["villa", 45],
+    ["buero-haus", 45],
+  ]);
+  expect(tag("2026-07-07", { zeiteintraege }).mitarbeiter).toEqual([]);
+});
+
+test("Tagesansicht: Geteilter Dienst zeigt zwei Arbeitstage, Fahrten ohne Objekt einzeln", () => {
+  const ergebnis = tag("2026-07-06", {
+    zeiteintraege: [
+      eintrag("2026-07-06T06:00:00+02:00", "2026-07-06T08:00:00+02:00", {
+        arbeitstagEndetHier: true,
+      }),
+      fahrt("2026-07-06T17:00:00+02:00", "2026-07-06T17:30:00+02:00", {
+        arbeitstagEndetHier: true,
+      }),
+    ],
+  });
+  const [anna] = ergebnis.mitarbeiter;
+  expect(anna.arbeitstage.map((t) => [t.beginn, t.ende, t.zeilen.length])).toEqual([
+    ["2026-07-06T06:00:00+02:00", "2026-07-06T08:00:00+02:00", 1],
+    ["2026-07-06T17:00:00+02:00", "2026-07-06T17:30:00+02:00", 0],
+  ]);
+  expect(anna.arbeitstage[1].fahrtenOhneObjekt).toMatchObject({
+    fahrtMinuten: 30,
+    fahrkostenCent: 1300,
+  });
+  // 60 € minus 52 € Arbeit und 13 € Fahrt ohne Objekt.
+  expect(anna.summe.deckungsbeitragCent).toBe(-500);
 });
